@@ -1,34 +1,42 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
+import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
+import { RolesGuard } from 'src/helpers/roles/roles.guard';
+import { Role } from 'src/helpers/roles/enum';
+import { Roles } from 'src/helpers/roles/roles.decorator';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post()
   create(@Body() createAuthDto: CreateAuthDto) {
     return this.authService.create(createAuthDto);
   }
 
-  @Get()
-  findAll() {
-    return this.authService.findAll();
+  @Post('login')
+  async login(@Body() body: { username: string; password: string; location: string }) {
+
+    const user = await this.authService.validateUser(body.username, body.password, body.location);
+
+    return this.authService.login(user);
+
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.God, Role.Admin)
+  @Post('register')
+  async register(@Req() req: any, @Body() body: any) {
+
+    return this.authService.create({ ...body, req });
+
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(+id, updateAuthDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
+  @UseGuards(JwtAuthGuard)
+  @Post('profile')
+  getProtectedRoute(@Req() req: any) {
+    return { message: `Hello ${req.user.username}, you have ${req.user.role} access!` };
   }
 }

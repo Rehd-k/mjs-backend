@@ -250,106 +250,249 @@ export class SalesService {
             sort = '{}',
             skip = 0,
             select = '',
-            limit = 10
+            limit = 10,
         } = query;
+
+        // --- 1. Initial Filter and Parameter Setup (Largely unchanged) ---
         const parsedFilter = JSON.parse(filter);
         const parsedSort = JSON.parse(sort);
 
-        if (!query.startDate || !query.endDate)
-            throw new BadRequestException(
-                'Start date and end date are required for this query')
-
+        if (!query.startDate || !query.endDate) {
+            throw new BadRequestException('Start date and end date are required for this query');
+        }
 
         try {
             const startDate = new Date(query.startDate);
-            startDate.setHours(0, 0, 0, 0); // Start of the startDate
+            startDate.setHours(0, 0, 0, 0);
 
             const endDate = new Date(query.endDate);
-            endDate.setHours(24, 59, 59, 999); // End of the endDate 
+            endDate.setHours(23, 59, 59, 999); // Corrected: 24:00 becomes 00:00 of the next day
 
             parsedFilter.transactionDate = { $gte: startDate, $lte: endDate };
 
-            if (req.user.role === 'cashier') {
-                parsedFilter.handler = req.user.username
+            if (req.user.role === 'cashier' || req.user.role === 'staff') {
+                parsedFilter.handler = req.user.username;
             }
 
-            if (req.user.role === 'staff') {
-                parsedFilter.handler = req.user.username
+            // Special condition for barcode lookup
+            if (parsedFilter?.barcodeId) {
+                query.skip = 0; // Reset pagination for specific lookup
+                delete parsedFilter.transactionDate;
             }
 
-            if (parsedFilter && typeof parsedFilter === 'object' && 'barcodeId' in parsedFilter) {
-                query.skip = 0;
-                delete parsedFilter.transactionDate
-            }
+            if (parsedFilter.handler === '') delete parsedFilter.handler;
+            if (parsedFilter.paymentMethod === '') delete parsedFilter.paymentMethod;
 
-            if (parsedFilter.handler === '') {
-                delete parsedFilter.handler
-            }
-
-
-            if (parsedFilter.paymentMethod === '') {
-                delete parsedFilter.paymentMethod
-            }
-
-            const totals = await this.saleModel.aggregate([
+            // --- 2. Construct the Single Aggregation Pipeline ---
+            const aggregationPipeline: any[] = [
+                // Stage 1: Match documents based on all filters
                 {
                     $match: { ...parsedFilter, location: req.user.location }
                 },
-                {
-                    $group: {
-                        _id: null,
-                        totalAmount: { $sum: "$totalAmount" },
-                        totalDiscount: { $sum: "$discount" },
-                        totalTransfer: { $sum: "$transfer" },
-                        totalCard: { $sum: "$card" },
-                        totalCash: { $sum: "$cash" },
-                        totalProfit: { $sum: "$profit" }
-                    }
-                }
-            ]);
+            ];
 
-            const summary = totals.length > 0 ? totals[0] : {
-                totalAmount: 0,
-                totalDiscount: 0,
-                totalTransfer: 0,
-                totalCard: 0,
-                totalCash: 0,
-                totalProfit: 0
+            // Add sorting if provided, important for consistent pagination
+            if (Object.keys(parsedSort).length > 0) {
+                aggregationPipeline.push({ $sort: parsedSort });
+            }
+
+            // Stage 2: Use $facet to run multiple aggregation pipelines on the same set of matched documents
+            aggregationPipeline.push({
+                $facet: {
+                    // Pipeline 1: Calculate metadata (summary and total count)
+                    metadata: [
+                        {
+                            $group: {
+                                _id: null,
+                                totalAmount: { $sum: "$totalAmount" },
+                                totalDiscount: { $sum: "$discount" },
+                                totalTransfer: { $sum: "$transfer" },
+                                totalCard: { $sum: "$card" },
+                                totalCash: { $sum: "$cash" },
+                                totalProfit: { $sum: "$profit" },
+                                totalDocuments: { $sum: 1 } // Count documents in the same group pass
+                            }
+                        }
+                    ],
+                    // Pipeline 2: Get the actual paginated data for the current page
+                    sales: [
+                        { $skip: Number(skip) },
+                        { $limit: Number(limit) },
+                        // Replicate Mongoose's .populate() using $lookup
+                        {
+                            $lookup: {
+                                from: 'customers', // The actual collection name for customers
+                                localField: 'customer',
+                                foreignField: '_id',
+                                as: 'customerInfo'
+                            }
+                        },
+                        {
+                            $lookup: {
+                                from: 'banks', // The actual collection name for banks
+                                localField: 'bank',
+                                foreignField: '_id',
+                                as: 'bankInfo'
+                            }
+                        },
+                        // $unwind to deconstruct the array field from the $lookup result
+                        { $unwind: { path: '$customerInfo', preserveNullAndEmptyArrays: true } },
+                        { $unwind: { path: '$bankInfo', preserveNullAndEmptyArrays: true } },
+                        // Replace the original fields with the populated ones
+                        {
+                            $addFields: {
+                                customer: "$customerInfo",
+                                bank: "$bankInfo"
+                            }
+                        },
+                        // Optional: Project fields similar to Mongoose's .select()
+                        // This part can be enhanced if you need to parse the 'select' string
+                    ],
+                    // Pipeline 3: Get all unique handlers for the matched results
+                    uniqueHandlers: [
+                        { $group: { _id: '$handler' } },
+                        { $group: { _id: null, handlers: { $push: '$_id' } } }
+                    ]
+                }
+            });
+
+            // --- 3. Execute the Single Query ---
+            const result = await this.saleModel.aggregate(aggregationPipeline);
+
+            // --- 4. Process and Return the Results ---
+            const data = result[0];
+            const metadata = data.metadata[0];
+
+            const sales = data.sales;
+            const totalDocuments = metadata ? metadata.totalDocuments : 0;
+            const handlers = data.uniqueHandlers.length > 0 ? data.uniqueHandlers[0].handlers.filter(h => h) : [];
+
+            const summary = metadata ? {
+                totalAmount: metadata.totalAmount,
+                totalDiscount: metadata.totalDiscount,
+                totalTransfer: metadata.totalTransfer,
+                totalCard: metadata.totalCard,
+                totalCash: metadata.totalCash,
+                totalProfit: metadata.totalProfit,
+            } : {
+                totalAmount: 0, totalDiscount: 0, totalTransfer: 0,
+                totalCard: 0, totalCash: 0, totalProfit: 0
             };
 
-
-
-
-
-            const sales = await this.saleModel
-                .find({ ...parsedFilter, location: req.user.location })
-                .sort(parsedSort)
-                .skip(Number(skip))
-                .limit(Number(limit))
-                .select(select)
-                .populate('customer bank')
-                .exec();
-
-
-            const totalDocuments = await this.saleModel
-                .countDocuments({ ...parsedFilter, location: req.user.location }); // Count total documents matching the filter
-
-
-            const forHandlers = await this.saleModel
-                .find({ transactionDate: { $gte: startDate, $lte: endDate }, location: req.user.location });
-
-
-            const handlersSet = new Set<string>();
-            forHandlers.forEach(sale => handlersSet.add(sale.handler));
-            const handlers = Array.from(handlersSet);
-
-
             return { sales, handlers, totalDocuments, summary };
+
         } catch (error) {
-            errorLog(error, "ERROR")
-            throw new InternalServerErrorException(error)
+            errorLog(error, "ERROR");
+            throw new InternalServerErrorException(error);
         }
     }
+
+    // async findAll(query: QueryDto, req: any) {
+    //     const {
+    //         filter = '{}',
+    //         sort = '{}',
+    //         skip = 0,
+    //         select = '',
+    //         limit = 10
+    //     } = query;
+    //     const parsedFilter = JSON.parse(filter);
+    //     const parsedSort = JSON.parse(sort);
+
+    //     if (!query.startDate || !query.endDate)
+    //         throw new BadRequestException(
+    //             'Start date and end date are required for this query')
+
+
+    //     try {
+    //         const startDate = new Date(query.startDate);
+    //         startDate.setHours(0, 0, 0, 0); // Start of the startDate
+
+    //         const endDate = new Date(query.endDate);
+    //         endDate.setHours(24, 59, 59, 999); // End of the endDate 
+
+    //         parsedFilter.transactionDate = { $gte: startDate, $lte: endDate };
+
+    //         if (req.user.role === 'cashier') {
+    //             parsedFilter.handler = req.user.username
+    //         }
+
+    //         if (req.user.role === 'staff') {
+    //             parsedFilter.handler = req.user.username
+    //         }
+
+    //         if (parsedFilter && typeof parsedFilter === 'object' && 'barcodeId' in parsedFilter) {
+    //             query.skip = 0;
+    //             delete parsedFilter.transactionDate
+    //         }
+
+    //         if (parsedFilter.handler === '') {
+    //             delete parsedFilter.handler
+    //         }
+
+
+    //         if (parsedFilter.paymentMethod === '') {
+    //             delete parsedFilter.paymentMethod
+    //         }
+
+    //         const totals = await this.saleModel.aggregate([
+    //             {
+    //                 $match: { ...parsedFilter, location: req.user.location }
+    //             },
+    //             {
+    //                 $group: {
+    //                     _id: null,
+    //                     totalAmount: { $sum: "$totalAmount" },
+    //                     totalDiscount: { $sum: "$discount" },
+    //                     totalTransfer: { $sum: "$transfer" },
+    //                     totalCard: { $sum: "$card" },
+    //                     totalCash: { $sum: "$cash" },
+    //                     totalProfit: { $sum: "$profit" }
+    //                 }
+    //             }
+    //         ]);
+
+    //         const summary = totals.length > 0 ? totals[0] : {
+    //             totalAmount: 0,
+    //             totalDiscount: 0,
+    //             totalTransfer: 0,
+    //             totalCard: 0,
+    //             totalCash: 0,
+    //             totalProfit: 0
+    //         };
+
+
+
+
+
+    //         const sales = await this.saleModel
+    //             .find({ ...parsedFilter, location: req.user.location })
+    //             .sort(parsedSort)
+    //             .skip(Number(skip))
+    //             .limit(Number(limit))
+    //             .select(select)
+    //             .populate('customer bank')
+    //             .exec();
+
+
+    //         const totalDocuments = await this.saleModel
+    //             .countDocuments({ ...parsedFilter, location: req.user.location }); // Count total documents matching the filter
+
+
+    //         const forHandlers = await this.saleModel
+    //             .find({ transactionDate: { $gte: startDate, $lte: endDate }, location: req.user.location });
+
+
+    //         const handlersSet = new Set<string>();
+    //         forHandlers.forEach(sale => handlersSet.add(sale.handler));
+    //         const handlers = Array.from(handlersSet);
+
+
+    //         return { sales, handlers, totalDocuments, summary };
+    //     } catch (error) {
+    //         errorLog(error, "ERROR")
+    //         throw new InternalServerErrorException(error)
+    //     }
+    // }
 
     async findOne(id: string): Promise<Sale | null> {
         try {

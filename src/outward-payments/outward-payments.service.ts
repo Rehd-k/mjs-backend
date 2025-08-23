@@ -16,13 +16,13 @@ export class OutwardPaymentsService {
   ) { }
 
   async create(createOutwardPaymentDto: any, req: any) {
-    console.log(createOutwardPaymentDto);
+
     try {
       createOutwardPaymentDto.location = req.user.location
       createOutwardPaymentDto.initiator = req.user.username
 
       const purchase = await this.purchasesModel.findById(createOutwardPaymentDto.paymentFor);
-      console.log(purchase)
+    
       if (!purchase) {
         throw new BadRequestException('Product not found');
       }

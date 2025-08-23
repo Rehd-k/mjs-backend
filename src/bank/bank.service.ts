@@ -25,7 +25,7 @@ export class BankService {
     async findAll(req): Promise<Bank[]> {
         try {
             const banks =  await this.bankModel.find({location : req.user.location}).exec();
-            console.log(banks);
+      
             return banks
         } catch (error) {
             errorLog(`Error finding banks: ${error.message}`, "ERROR")

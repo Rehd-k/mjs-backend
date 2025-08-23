@@ -54,7 +54,6 @@ export class ChargesService {
       errorLog(`Error updating one  charge: ${error}`, "ERROR")
       throw new BadRequestException(error);
     }
-
   }
 
   async remove(id: string) {

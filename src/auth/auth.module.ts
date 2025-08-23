@@ -17,8 +17,8 @@ import { User, UserSchema } from 'src/user/user.schema';
       secret: 'your_jwt_secret', // Replace with a secure value in .env
       signOptions: { expiresIn: '1d' },
     }),
-    MongooseModule.forFeature([{ name: Auth.name, schema: AuthSchema }]),
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }])
+    MongooseModule.forFeature([{ name: Auth.name, schema: AuthSchema }, { name: User.name, schema: UserSchema }]),
+
   ]
 
 })

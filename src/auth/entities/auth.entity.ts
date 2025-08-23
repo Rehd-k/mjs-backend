@@ -26,13 +26,13 @@ export class Auth {
     @Prop({ required: true, minlength: 6 })
     password: string;
 
-    @Prop({ required: true, enum: ['admin', 'manager', 'supervisor', 'staff', 'accounting', 'god', 'kitchen', 'bar', 'resturant'], default: 'staff' })
+    @Prop({ required: true, enum: ['admin', 'manager', 'supervisor', 'staff', 'accounting', 'god', 'kitchen', 'bar', 'resturant', 'store'], default: 'staff' })
     role: string;
 
     @Prop({ required: true })
     initiator: string;
 
-    @Prop({ required: true, enum: ['kitchen', 'restaurant', 'bar', 'pasties'] })
+    @Prop({ required: true, enum: ['kitchen', 'restaurant', 'bar', 'pasties', 'store'] })
     department: string;
 
     @Prop({ required: true })

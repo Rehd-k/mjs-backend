@@ -15,7 +15,7 @@ export class ProductService {
             createProductDto.title = createProductDto.title.toLowerCase();
             createProductDto.initiator = req.user.username;
             const createdProduct = new this.productModel(createProductDto);
-            
+
             return await createdProduct.save();
         } catch (error) {
             errorLog(`Error createing objects ${error}`, "ERROR")

@@ -1,8 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import mongoose, { Types } from "mongoose";
 
-export type StoreDocument = Store & Document;
-
 class Product {
     @Prop()
     title: string;
@@ -28,27 +26,12 @@ class Product {
         }
     }
 })
-export class Store {
+export class StoreHistory {
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })
-    title: string;
-
-    @Prop()
-    description: string;
-
-    @Prop({ type: [String] })
-    access: string[]
+    from: string;
 
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })
-    initiator: string;
-
-    @Prop({ required: true, set: (title: string) => title.toLowerCase() })
-    type: string
-
-    @Prop({ required: true, default: true })
-    active: boolean
-
-    @Prop()
-    location: string;
+    to: string;
 
     @Prop({
         type: [{
@@ -59,6 +42,16 @@ export class Store {
         }]
     })
     products: Product[];
+
+    @Prop()
+    location: string;
+
+    @Prop({ required: true, set: (title: string) => title.toLowerCase() })
+    closer: string;
+
+    @Prop({ required: true, set: (title: string) => title.toLowerCase() })
+    initiator: string;
 }
 
-export const StoreSchema = SchemaFactory.createForClass(Store);
+
+export const StoreHistorySchema = SchemaFactory.createForClass(StoreHistory);

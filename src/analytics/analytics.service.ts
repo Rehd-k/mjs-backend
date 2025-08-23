@@ -497,7 +497,7 @@ export class AnalyticsService {
     const endDate = new Date(end);
     endDate.setHours(24, 59, 59, 999); // End of day
 
-    console.log(productId, startDate, endDate)
+
     const [sales, returns, purchases, invoices] = await Promise.all([
       this.getSalesReport(productId, startDate, endDate),
       this.getReturnsReport(productId, startDate, endDate),
@@ -511,7 +511,7 @@ export class AnalyticsService {
     // Sort the final report by date
     combinedReport.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
 
-    console.log(combinedReport)
+
     return combinedReport;
   }
 

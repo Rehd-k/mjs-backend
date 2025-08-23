@@ -1,26 +1,49 @@
 import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 import { Purchase } from './purchases.schema';
 import { SupplierService } from 'src/supplier/supplier.service';
 import { ProductService } from 'src/product/product.service';
 import { QueryDto } from 'src/product/query.dto';
 import { errorLog } from 'src/helpers/do_loggers';
+import { Store } from 'src/store/entities/store.entity';
 
 @Injectable()
 export class PurchasesService {
-    constructor(@InjectModel(Purchase.name) private purchaseModel: Model<Purchase>, private supplierService: SupplierService, @Inject(forwardRef(() => ProductService)) private productService: ProductService) { }
+    constructor(@InjectModel(Purchase.name) private purchaseModel: Model<Purchase>, private supplierService: SupplierService, @Inject(forwardRef(() => ProductService)) private productService: ProductService, @InjectModel(Store.name) private storeModel: Model<Store>) { }
 
     async create(createPurchaseDto: any, req: any): Promise<Purchase> {
         try {
             createPurchaseDto.location = req.user.location;
             createPurchaseDto.initiator = req.user.username;
             const createdPurchase = new this.purchaseModel(createPurchaseDto);
-            const order = await createdPurchase.save();
-            if (createdPurchase.status === 'status') {
-                await this.productService.increaseAmount(createdPurchase.productId, createdPurchase.quantity);
-            }
 
+            if (createdPurchase.status === 'Delivered') {
+                const product = await this.productService.findOne(createdPurchase.productId.toString());
+                if (!product)
+                    throw new BadRequestException('Product Not Found')
+                product.quantity = product.quantity + Number(createdPurchase.quantity);
+                const mainStore = await this.storeModel.findOne({ title: 'main store' })
+                if (!mainStore) {
+                    throw new Error('No Main Store in Facility, Please Create A Main Store And Try Again')
+                }
+                const storeProduct = mainStore.products.find((res) => res.product === product._id)
+                if (storeProduct) {
+                    storeProduct.quantity = storeProduct.quantity + Number(createdPurchase.quantity)
+                } else {
+                    const newProduct = {
+                        title: product.title,
+                        product: new mongoose.Types.ObjectId(product._id as string),
+                        quantity: Number(createdPurchase.quantity),
+                        price: product.price,
+                    }
+                    mainStore.products.push(newProduct)
+                }
+                await mainStore.save()
+
+                await product.save()
+            }
+            const order = await createdPurchase.save();
             await this.supplierService.addOrder(createdPurchase.supplier, order._id);
             return order
         } catch (error) {
@@ -131,8 +154,6 @@ export class PurchasesService {
         return result;
     }
 
-   
-
     async findAll(query: QueryDto, req: any): Promise<{ purchases: Purchase[], totalDocuments: number }> {
         const {
             filter = '{}',
@@ -224,36 +245,78 @@ export class PurchasesService {
         await product.save();
         await purchace.save();
     }
-
+ 
     async update(id: string, updatePurchaseDto: any) {
         try {
-
-            const purchase = await this.purchaseModel.findById(id)
-            if (!purchase)
+            const purchase = await this.purchaseModel.findById(id);
+            if (!purchase) {
                 throw new BadRequestException('Purchase Not Found');
-            Object.entries(updatePurchaseDto).forEach(async ([key, value]) => {
-                purchase[key] = value
+            }
+
+            for (const [key, value] of Object.entries(updatePurchaseDto)) {
+                purchase[key] = value;
 
                 if (key === 'status' && value === 'Delivered') {
                     const product = await this.productService.findOne(purchase.productId.toString());
-                    if (!product)
-                        throw new BadRequestException('Product Not Found')
+                    if (!product) {
+                        throw new Error('Product Not Found');
+                    }
+
                     product.quantity = product.quantity + Number(purchase.quantity);
-                    await product.save()
-                } else if (key === 'status' && value === 'Not Delivered') {
-                    const product = await this.productService.findOne(purchase.productId.toString());
-                    if (!product)
-                        throw new BadRequestException('Product Not Found')
-                    product.quantity = product.quantity - Number(purchase.quantity);
-                    await product.save()
+                    const mainStore = await this.storeModel.findOne({ title: 'main store' });
+
+                    if (!mainStore) {
+                        throw new Error('No Main Store in Facility, Please Create A Main Store And Try Again');
+                    }
+
+                    const storeProduct = mainStore.products.find((res) => res.product === product._id);
+
+                    if (storeProduct) {
+                        storeProduct.quantity = storeProduct.quantity + Number(purchase.quantity);
+                    } else {
+                        mainStore.products.push({
+                            title: product.title,
+                            product: new mongoose.Types.ObjectId(product._id as string),
+                            quantity: Number(purchase.quantity),
+                            price: product.price,
+                        });
+                    }
+
+                    await mainStore.save();
+                    await product.save();
                 }
-            });
-            return await purchase.save()
+
+                if (key === 'status' && value === 'Not Delivered') {
+                    const product = await this.productService.findOne(purchase.productId.toString());
+                    if (!product) {
+                        throw new Error('Product Not Found');
+                    }
+
+                    product.quantity = product.quantity - Number(purchase.quantity);
+                    const mainStore = await this.storeModel.findOne({ title: 'main store' });
+
+                    if (!mainStore) {
+                        throw new Error('No Main Store in Facility, Please Create A Main Store And Try Again');
+                    }
+
+                    const sendingProduct = mainStore.products.find((res) => res.product === product._id);
+
+                    if (!sendingProduct) {
+                        throw new Error('Product with id was not found. At this location');
+                    }
+
+                    sendingProduct.quantity = sendingProduct.quantity - Number(purchase.quantity);
+
+                    await mainStore.save();
+                    await product.save();
+                }
+            }
+
+            return await purchase.save();
         } catch (error) {
             errorLog(`updating one purchases error ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
-
     }
 
     async remove(id: string): Promise<Purchase | null> {

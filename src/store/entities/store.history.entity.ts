@@ -30,8 +30,14 @@ export class StoreHistory {
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })
     from: string;
 
+    @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Store' })
+    fromId: Types.ObjectId;
+
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })
     to: string;
+
+    @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Store' })
+    toId: Types.ObjectId;
 
     @Prop({
         type: [{
@@ -46,7 +52,7 @@ export class StoreHistory {
     @Prop()
     location: string;
 
-    @Prop({ required: true, set: (title: string) => title.toLowerCase() })
+    @Prop({ set: (title: string) => title.toLowerCase() })
     closer: string;
 
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })

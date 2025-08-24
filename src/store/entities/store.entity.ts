@@ -35,7 +35,7 @@ export class Store {
     @Prop()
     description: string;
 
-    @Prop({ type: [String] })
+    @Prop({ type: [String], default: ['god', 'admin'] })
     access: string[]
 
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })

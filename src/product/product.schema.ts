@@ -34,9 +34,6 @@ export class Product extends Document {
     @Prop({ type: [{ type: mongoose.Types.ObjectId }], ref: 'Purchase' })
     purchases: mongoose.Types.ObjectId[];
 
-    @Prop({ type: [{ type: mongoose.Types.ObjectId }], ref: 'Transfers' })
-    transfers: mongoose.Types.ObjectId[];
-
     @Prop({ min: 0, default: 0 })
     roq: number
 
@@ -49,10 +46,10 @@ export class Product extends Document {
     @Prop({ default: 'unit', enum: ['unit', 'carton', 'portion', 'kg', 'crate'] })
     type: String;
 
-    @Prop({ required: true, min: 0 })
+    @Prop({ min: 0 })
     cartonAmount: number
 
-    @Prop({ required: true, min: 0 })
+    @Prop({ min: 0 })
     cartonPrice: number
 
     @Prop({ trim: true, set: (title: string) => title.toLowerCase() })

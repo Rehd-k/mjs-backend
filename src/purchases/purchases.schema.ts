@@ -34,6 +34,9 @@ export class Purchase {
     @Prop({ required: true, min: 0 })
     cartonPrice: number
 
+    @Prop({ required: true, min: 0 })
+    cartonQuanity: number
+
     @Prop({ required: true })
     totalPayable: number;
 

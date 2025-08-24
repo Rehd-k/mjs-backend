@@ -4,10 +4,11 @@ import { StoreHistory } from "./entities/store.history.entity";
 import { Model } from "mongoose";
 import { errorLog } from "src/helpers/do_loggers";
 import { QueryDto } from "src/product/query.dto";
+import { StoreService } from "./store.service";
 
 @Injectable()
 export class StoreHistoryService {
-  constructor(@InjectModel(StoreHistory.name) private storeHistoryModel: Model<StoreHistory>) { }
+  constructor(@InjectModel(StoreHistory.name) private storeHistoryModel: Model<StoreHistory>, private readonly storeService: StoreService) { }
 
   async createHistory(newHistory: any, req: any) {
     try {
@@ -92,7 +93,6 @@ export class StoreHistoryService {
       ];
 
       const result = await this.storeHistoryModel.aggregate(pipeline).exec();
-      console.log(mongoFilter, { query })
       return result[0] || { history: [], totalDocuments: 0 };
 
     } catch (error) {

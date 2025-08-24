@@ -20,11 +20,20 @@ export class Bank {
     @Prop({ required: true, unique: true })
     accountNumber: string;
 
+    @Prop({ required: true, unique: true })
+    accountName: string;
+
     @Prop({ default: true })
     isActive: boolean;
 
     @Prop({ default: 0 })
     balance: number;
+
+    @Prop({ type: Types.ObjectId, ref: 'InwardPayment', required: true })
+    inward: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, ref: 'OutwardPayment', required: true })
+    outward: Types.ObjectId;
 
     @Prop({ required: true, type: String })
     location: string;

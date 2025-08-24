@@ -26,6 +26,7 @@ import * as fs from 'fs';
 import { LoggerModule } from 'nestjs-pino';
 import { OutwardPaymentsModule } from './outward-payments/outward-payments.module';
 import { StoreModule } from './store/store.module';
+import { InwardPaymentsModule } from './inward-payments/inward-payments.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { StoreModule } from './store/store.module';
     BankModule,
     OutwardPaymentsModule,
     StoreModule,
+    InwardPaymentsModule,
 
   ],
   controllers: [AppController],

@@ -19,7 +19,7 @@ export class ProductService {
             return await createdProduct.save();
         } catch (error) {
             errorLog(`Error createing objects ${error}`, "ERROR")
-            throw new BadRequestException(error);
+            throw new BadRequestException(error); 
         }
 
     }
@@ -70,7 +70,7 @@ export class ProductService {
         try {
             return await this.productModel.findById(id).exec();
         } catch (error) {
-            errorLog(`Error finding products ${error}`, "ERROR")
+            errorLog(`Error finding this producs ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
     }

@@ -36,6 +36,7 @@ export class ProductService {
         } = query;
         const parsedFilter = JSON.parse(filter);
         const parsedSort = JSON.parse(sort);
+    
         // If the filter contains a 'barcode' key, set skip to 0
         if (parsedFilter && typeof parsedFilter === 'object' && 'barcode' in parsedFilter) {
             query.skip = 0;

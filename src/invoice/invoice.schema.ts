@@ -7,7 +7,7 @@ export type InvoiceDocument = Invoice & Document;
 @Schema()
 class CartProduct {
     @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
-    _id: Types.ObjectId;
+    productId: Types.ObjectId;
 
     @Prop({
         set: (title: string) => title.toLowerCase()
@@ -65,7 +65,7 @@ export class Invoice extends Document {
     invoiceNumber: string;
 
     @Prop({ required: true, type: String, default: '' })
-    recurring: string;
+    from: string;
 
 
     @Prop({ type: [CartProduct] })
@@ -83,7 +83,7 @@ export class Invoice extends Document {
     @Prop({ required: true, type: Number })
     previouslyPaidAmount: number;
 
-    @Prop({ default: 'pending' })
+    @Prop({ default: 'unpaid', enum: ["unpaid", "partial", "paid"] })
     status: string;
 
     @Prop({ default: [String] })

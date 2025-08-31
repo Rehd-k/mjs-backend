@@ -34,7 +34,7 @@ export class Category extends Document {
         type: String,
         trim: true
     })
-    user: string;
+    initiator: string;
 
     @Prop({ required: true, type: String })
     location: string;

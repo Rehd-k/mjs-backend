@@ -16,7 +16,7 @@ function generateBarCodeId(): string {
 @Schema()
 class CartProduct {
     @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
-    _id: Types.ObjectId;
+    productId: Types.ObjectId;
 
     @Prop({
         set: (title: string) => title.toLowerCase()

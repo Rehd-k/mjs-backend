@@ -22,19 +22,23 @@ export class Purchase {
     @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
     productId: Types.ObjectId;
 
+    // unit quantity
     @Prop({ required: true })
     quantity: number;
 
+    // unit price (1 unit)
     @Prop({ required: true })
     price: number;
 
     @Prop({ required: true })
     total: number;
 
-    @Prop({ required: true, min: 0 })
+    // carton price (1 carton)
+    @Prop({ default: 0, min: 0 })
     cartonPrice: number
 
-    @Prop({ required: true, min: 0 })
+    // amount of cartons bought
+    @Prop({ default: 0, min: 0 })
     cartonQuanity: number
 
     @Prop({ required: true })
@@ -52,13 +56,10 @@ export class Purchase {
     @Prop()
     status: string;
 
-    @Prop()
-    paymentMethod: string;
-
     @Prop({
         set: (title: string) => title.toLowerCase()
     })
-    shippingAddress: string;
+    dropOfLocation: string;
 
     @Prop({
         set: (title: string) => title.toLowerCase()
@@ -78,42 +79,55 @@ export class Purchase {
     })
     expiryDate: Date;
 
-    @Prop()
-    transfer: number;
-
-    @Prop()
+    @Prop({ default: 0 })
     cash: number;
 
-    @Prop()
-    card: number
+    @Prop({ default: 0 })
+    bank: number
 
-    @Prop()
+    @Prop({ default: 0 })
     debt: number;
 
-    @Prop()
+    @Prop({ default: 0 })
     discount: number;
+
+    @Prop()
+    moneyFrom: string
 
     @Prop()
     deliveryDate: Date;
 
 
-    @Prop({ type: [{ type: mongoose.Types.ObjectId }], ref: 'OutwardPayment' })
+    @Prop({ type: [{ type: mongoose.Types.ObjectId }], ref: 'Cashflow' })
     payments: mongoose.Types.ObjectId[];
 
     @Prop({
         type: [{
-            _id: Types.ObjectId,
             date: Date,
             quantity: Number,
             reason: String,
         }]
     })
     damagedGoods: {
-        _id: Types.ObjectId;
         date: Date;
         quantity: number;
         reason: string;
     }[];
+
+
+    @Prop({
+        type: [{
+            date: Date,
+            quantity: Number,
+            reason: String,
+        }]
+    })
+    returns: {
+        date: Date;
+        quantity: number;
+        reason: string;
+    }[];
+
 
     @Prop({
         type: [{
@@ -129,9 +143,6 @@ export class Purchase {
 
     @Prop({ required: true, type: String })
     location: string;
-
-    // @Prop({ required: true, type: [String] })
-    // store: string[];
 }
 
 export const PurchaseSchema = SchemaFactory.createForClass(Purchase);

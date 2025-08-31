@@ -24,9 +24,11 @@ import { TodoModule } from './todo/todo.module';
 import { UserModule } from './user/user.module';
 import * as fs from 'fs';
 import { LoggerModule } from 'nestjs-pino';
-import { OutwardPaymentsModule } from './outward-payments/outward-payments.module';
-import { StoreModule } from './store/store.module';
-import { InwardPaymentsModule } from './inward-payments/inward-payments.module';
+import { CashflowModule } from './cashflow/cashflow.module';
+import { DepartmentModule } from './department/department.module';
+import { CreditorsModule } from './creditors/creditors.module';
+import { ServingSizeModule } from './serving-size/serving-size.module';
+import { RawMaterialModule } from './raw-material/raw-material.module';
 
 @Module({
   imports: [
@@ -77,9 +79,11 @@ import { InwardPaymentsModule } from './inward-payments/inward-payments.module';
         },
     }),
     BankModule,
-    OutwardPaymentsModule,
-    StoreModule,
-    InwardPaymentsModule,
+    CashflowModule,
+    DepartmentModule,
+    CreditorsModule,
+    ServingSizeModule,
+    RawMaterialModule,
 
   ],
   controllers: [AppController],

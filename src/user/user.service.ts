@@ -16,7 +16,7 @@ export class UserService {
                 user.initiator = 'god'
             return await this.userModel.create(user);
         } catch (error) {
-            console.error(`Error creating user: ${error}`);
+  
             if (error && error.code === 11000) {
                 let errMessage = `User with username ${(error.errorResponse.keyValue.username)} already exists`;
                 errorLog(`${errMessage}`, "ERROR")
@@ -49,13 +49,16 @@ export class UserService {
             } = query;
             const parsedFilter = JSON.parse(filter);
             const parsedSort = JSON.parse(sort);
-            return await this.userModel.find({ ...parsedFilter, location: req.user.location })
+
+            const user = await this.userModel.find({ ...parsedFilter, location: req.user.location })
                 .sort(parsedSort)
                 .skip(Number(skip))
                 .limit(Number(limit))
                 .select(select)
-                .populate('location')
+                // .populate('location')
                 .exec()
+ 
+            return user;
         } catch (error) {
             errorLog(`error finding all users ${error}`, "ERROR")
             throw new BadRequestException(error);

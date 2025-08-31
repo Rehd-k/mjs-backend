@@ -15,7 +15,7 @@ export class NotificationsService {
             const notification = new this.notificationModel({ type, message, recipients, location: req.user.location });
             return await notification.save();
         } catch (error) {
-            errorLog(error);
+            errorLog(error, req.url);
             throw new BadRequestException('Failed to create notification');
         }
     }
@@ -24,7 +24,7 @@ export class NotificationsService {
         try {
             return await this.notificationModel.find({ recipients: recipient, location }).sort({ createdAt: -1 });
         } catch (error) {
-            errorLog(error);
+            // errorLog(error, req);
             throw new BadRequestException('Failed to get notifications');
         }
     }
@@ -33,7 +33,7 @@ export class NotificationsService {
         try {
             return await this.notificationModel.findByIdAndUpdate(notificationId, { isRead: true });
         } catch (error) {
-            errorLog(error);
+            // errorLog(error);
             throw new BadRequestException('Failed to mark notification as read');
         }
     }

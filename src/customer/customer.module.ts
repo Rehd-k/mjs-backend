@@ -12,6 +12,6 @@ import { ActivityModule } from 'src/activity/activity.module';
   ],
   providers: [CustomerService],
   controllers: [CustomerController],
-  exports: [CustomerService]
+  exports: [CustomerService, MongooseModule]
 })
 export class CustomerModule { }

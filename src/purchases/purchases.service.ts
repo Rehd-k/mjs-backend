@@ -6,11 +6,21 @@ import { SupplierService } from 'src/supplier/supplier.service';
 import { ProductService } from 'src/product/product.service';
 import { QueryDto } from 'src/product/query.dto';
 import { errorLog } from 'src/helpers/do_loggers';
-import { Store } from 'src/store/entities/store.entity';
+import { Department } from 'src/department/entities/department.entity';
+import { CashflowService } from 'src/cashflow/cashflow.service';
 
+
+// Remeber to handle for returns outwards
+// goods would leave a particular batch nothing spectacuolar , just reduce stock and increase money entering inward oaymet
 @Injectable()
 export class PurchasesService {
-    constructor(@InjectModel(Purchase.name) private purchaseModel: Model<Purchase>, private supplierService: SupplierService, @Inject(forwardRef(() => ProductService)) private productService: ProductService, @InjectModel(Store.name) private storeModel: Model<Store>) { }
+    constructor(
+        @InjectModel(Purchase.name) private purchaseModel: Model<Purchase>,
+        private supplierService: SupplierService,
+        @Inject(forwardRef(() => ProductService)) private productService: ProductService,
+        @InjectModel(Department.name) private departmentModel: Model<Department>,
+        private cashflowService: CashflowService
+    ) { }
 
     async create(createPurchaseDto: any, req: any): Promise<Purchase> {
         try {
@@ -18,47 +28,141 @@ export class PurchasesService {
             createPurchaseDto.initiator = req.user.username;
             const createdPurchase = new this.purchaseModel(createPurchaseDto);
 
+            if (createdPurchase.debt < createdPurchase.totalPayable) {
+                const paymentInfo = {
+                    title: 'Purchase Payment',
+                    paymentFor: createdPurchase._id,
+                    cash: createdPurchase.cash,
+                    bank: createdPurchase.bank,
+                    type: 'out',
+                    moneyFrom: createdPurchase.moneyFrom,
+                    transactionDate: createdPurchase.purchaseDate,
+                    initiator: req.user.username,
+                    location: req.user.location
+                }
+                await this.cashflowService.createPayment(paymentInfo);
+            }
+
             if (createdPurchase.status === 'Delivered') {
                 const product = await this.productService.findOne(createdPurchase.productId.toString());
                 if (!product)
                     throw new BadRequestException('Product Not Found')
                 product.quantity = product.quantity + Number(createdPurchase.quantity);
-                const mainStore = await this.storeModel.findOne({ title: 'main store' })
-                if (!mainStore) {
-                    throw new Error('No Main Store in Facility, Please Create A Main Store And Try Again')
+
+                const mainDepartment = await this.departmentModel.findOne({ _id: createdPurchase.dropOfLocation })
+
+                if (!mainDepartment) {
+                    throw new Error('This Drop Of Point Does not Exist  in Facility, Please Create A Drop Of Point And Try Again')
                 }
-                const storeProduct = mainStore.products.find((res) => res.product === product._id)
-                if (storeProduct) {
-                    storeProduct.quantity = storeProduct.quantity + Number(createdPurchase.quantity)
-                } else {
+                const departmentProduct = mainDepartment.finishedGoods.findIndex((res) => {
+
+                    return res.productId.toString() == product._id
+                })
+
+
+                if (departmentProduct == -1) {
                     const newProduct = {
                         title: product.title,
                         product: new mongoose.Types.ObjectId(product._id as string),
                         quantity: Number(createdPurchase.quantity),
                         price: product.price,
+                        type: product.type,
+                        servingSize: product.cartonAmount
                     }
-                    mainStore.products.push(newProduct)
-                }
-                await mainStore.save()
 
-                await product.save()
+                    mainDepartment.finishedGoods.push(
+                        {
+                            title: product.title,
+                            productId: new mongoose.Types.ObjectId(product._id as string),
+                            quantity: Number(createdPurchase.quantity),
+                            price: Number(product.price),
+                            type: product.type,
+                            servingSize: product.cartonAmount,
+                            servingPrice: product.cartonPrice,
+                            sellUnits: product.sellUnits
+                        }
+                    )
+                } else {
+                    mainDepartment.finishedGoods[departmentProduct].quantity = mainDepartment.finishedGoods[departmentProduct].quantity + Number(createdPurchase.quantity)
+                }
+
+                await Promise.all([mainDepartment.save(), product.save()]);
             }
             const order = await createdPurchase.save();
             await this.supplierService.addOrder(createdPurchase.supplier, order._id);
+            if (createdPurchase.debt < createdPurchase.totalPayable) {
+                const paymentInfo = {
+                    title: 'Purchase Payment',
+                    paymentFor: createdPurchase._id,
+                    cash: createdPurchase.cash,
+                    bank: createdPurchase.bank,
+                    type: 'out',
+                    moneyFrom: createdPurchase.moneyFrom,
+                    transactionDate: createdPurchase.purchaseDate,
+                    initiator: req.user.username,
+                    location: req.user.location
+                }
+                await this.cashflowService.createPayment(paymentInfo);
+            }
             return order
         } catch (error) {
+
             errorLog(`Failed to create purchase ${error}`, "ERROR")
-            throw new BadRequestException('Failed to create purchase');
+            throw new BadRequestException(error);
         }
 
     }
 
+    async updatePurchasePayment(createCashflowDto: any, req: any) {
+        const purchase = await this.purchaseModel.findById(createCashflowDto.paymentFor);
+        if (!purchase) {
+            throw new BadRequestException('Product not found');
+        }
+        purchase.debt = purchase.debt - (createCashflowDto.cash + createCashflowDto.bank);
+        if (createCashflowDto.cash > 0) {
+            purchase.cash = purchase.cash + createCashflowDto.cash;
+        }
+        if (createCashflowDto.bank > 0) {
+            purchase.bank = purchase.bank + createCashflowDto.bank;
+        }
+
+
+
+        const paymentInfo = {
+            title: 'Purchase Payment',
+            paymentFor: purchase._id,
+            cash: createCashflowDto.cash,
+            bank: createCashflowDto.bank,
+            type: 'out',
+            moneyFrom: createCashflowDto.moneyFrom,
+            transactionDate: createCashflowDto.transactionDate,
+            initiator: req.user.initiator,
+            location: req.user.location
+        }
+        const payment = await this.cashflowService.createPayment(paymentInfo)
+        purchase.payments.push(payment._id)
+        const updatedPurchase = await purchase.save()
+        return updatedPurchase
+    }
+
+
+
     async getDashboardData(id: string) {
         const pipeline = [
             { $match: { productId: id } },
+
             {
                 $addFields: {
-                    unitPrice: { $cond: [{ $eq: ["$quantity", 0] }, 0, { $divide: ["$total", "$quantity"] }] },
+                    // Prevent division by zero
+                    unitPrice: {
+                        $cond: [
+                            { $eq: ["$quantity", 0] },
+                            0,
+                            { $divide: ["$total", "$quantity"] }
+                        ]
+                    },
+
+                    // Total sold
                     totalSoldAmount: { $sum: "$sold.amount" },
                     totalSoldValue: {
                         $sum: {
@@ -69,6 +173,8 @@ export class PurchasesService {
                             }
                         }
                     },
+
+                    // Damaged
                     totalDamagedQuantity: {
                         $cond: [
                             { $isArray: "$damagedGoods" },
@@ -79,26 +185,73 @@ export class PurchasesService {
                     totalDamagedValue: {
                         $cond: [
                             { $isArray: "$damagedGoods" },
-                            { $sum: { $map: { input: "$damagedGoods", as: "d", in: { $multiply: ["$$d.quantity", "$unitPrice"] } } } },
+                            {
+                                $sum: {
+                                    $map: {
+                                        input: "$damagedGoods",
+                                        as: "d",
+                                        in: { $multiply: ["$$d.quantity", "$unitPrice"] }
+                                    }
+                                }
+                            },
                             { $multiply: ["$damagedGoods.quantity", "$unitPrice"] }
                         ]
                     },
+
+                    // Expired
                     totalExpiredQuantity: {
                         $cond: [
                             { $isArray: "$damagedGoods" },
-                            { $sum: { $map: { input: "$damagedGoods", as: "d", in: { $cond: [{ $eq: ["$$d.type", "expired"] }, "$$d.quantity", 0] } } } },
-                            { $cond: [{ $eq: ["$damagedGoods.type", "expired"] }, "$damagedGoods.quantity", 0] }
+                            {
+                                $sum: {
+                                    $map: {
+                                        input: "$damagedGoods",
+                                        as: "d",
+                                        in: {
+                                            $cond: [{ $eq: ["$$d.type", "expired"] }, "$$d.quantity", 0]
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                $cond: [
+                                    { $eq: ["$damagedGoods.type", "expired"] },
+                                    "$damagedGoods.quantity",
+                                    0
+                                ]
+                            }
                         ]
                     },
                     totalExpiredValue: {
                         $cond: [
                             { $isArray: "$damagedGoods" },
-                            { $sum: { $map: { input: "$damagedGoods", as: "d", in: { $cond: [{ $eq: ["$$d.type", "expired"] }, { $multiply: ["$$d.quantity", "$unitPrice"] }, 0] } } } },
-                            { $cond: [{ $eq: ["$damagedGoods.type", "expired"] }, { $multiply: ["$damagedGoods.quantity", "$unitPrice"] }, 0] }
+                            {
+                                $sum: {
+                                    $map: {
+                                        input: "$damagedGoods",
+                                        as: "d",
+                                        in: {
+                                            $cond: [
+                                                { $eq: ["$$d.type", "expired"] },
+                                                { $multiply: ["$$d.quantity", "$unitPrice"] },
+                                                0
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                $cond: [
+                                    { $eq: ["$damagedGoods.type", "expired"] },
+                                    { $multiply: ["$damagedGoods.quantity", "$unitPrice"] },
+                                    0
+                                ]
+                            }
                         ]
                     }
                 }
             },
+
             {
                 $group: {
                     _id: null,
@@ -106,8 +259,22 @@ export class PurchasesService {
                     totalSalesValue: { $sum: "$totalSoldValue" },
                     totalPurchases: { $sum: 1 },
                     totalPurchasesValue: { $sum: { $multiply: ["$quantity", "$unitPrice"] } },
-                    // Only change this line to show profit only for sold items:
-                    totalProfit: { $sum: { $subtract: ["$totalSoldValue", { $multiply: ["$totalSoldAmount", "$unitPrice"] }] } },
+
+                    // ✅ profit rounded to nearest whole number
+                    totalProfit: {
+                        $sum: {
+                            $round: [
+                                {
+                                    $subtract: [
+                                        "$totalSoldValue",
+                                        { $multiply: ["$totalSoldAmount", "$unitPrice"] }
+                                    ]
+                                },
+                                0
+                            ]
+                        }
+                    },
+
                     quantity: { $sum: "$quantity" },
                     totalDamagedQuantity: { $sum: "$totalDamagedQuantity" },
                     totalDamagedValue: { $sum: "$totalDamagedValue" },
@@ -115,6 +282,7 @@ export class PurchasesService {
                     totalExpiredValue: { $sum: "$totalExpiredValue" }
                 }
             },
+
             {
                 $project: {
                     _id: 0,
@@ -145,13 +313,10 @@ export class PurchasesService {
                 totalExpiredQuantity: 0,
                 totalExpiredValue: 0
             }
-        ]
+        ];
 
         const result = await this.purchaseModel.aggregate(pipeline).exec();
-        if (result.length === 0) {
-            return noOrder;
-        }
-        return result;
+        return result.length > 0 ? result : noOrder;
     }
 
     async findAll(query: QueryDto, req: any): Promise<{ purchases: Purchase[], totalDocuments: number }> {
@@ -229,23 +394,44 @@ export class PurchasesService {
 
     async doDamagedGood(id: string, updatePurchaseDto: any) {
         const product = await this.productService.findOne(updatePurchaseDto.productId);
-        if (!product) {
-            throw new BadRequestException('Product not found');
+        const purchace = await this.purchaseModel.findById(id);
+        if (!product || !purchace) {
+            throw new BadRequestException('Not found');
         }
         product.quantity = product.quantity - Number(updatePurchaseDto.quantity);
-        const purchace = await this.purchaseModel.findById(id);
-        if (!purchace) {
-            throw new BadRequestException('Purchase not found');
-        }
+
         purchace.quantity = purchace.quantity - Number(updatePurchaseDto.quantity);
+
         delete updatePurchaseDto.productId;
         delete updatePurchaseDto._id;
         purchace.damagedGoods.push(updatePurchaseDto);
-
-        await product.save();
-        await purchace.save();
+        const result = await Promise.all([
+            product.save(),
+            purchace.save()
+        ]);
+        return result;
     }
- 
+
+    async doReturns(id: string, updatePurchaseDto: any) {
+        const product = await this.productService.findOne(updatePurchaseDto.productId);
+        const purchace = await this.purchaseModel.findById(id);
+        if (!product || !purchace) {
+            throw new BadRequestException('Not found');
+        }
+
+        product.quantity = product.quantity - Number(updatePurchaseDto.quantity);
+        purchace.quantity = purchace.quantity - Number(updatePurchaseDto.quantity);
+
+        delete updatePurchaseDto.productId;
+        delete updatePurchaseDto._id;
+        purchace.returns.push(updatePurchaseDto);
+        const result = await Promise.all([
+            product.save(),
+            purchace.save()
+        ]);
+        return result;
+    }
+
     async update(id: string, updatePurchaseDto: any) {
         try {
             const purchase = await this.purchaseModel.findById(id);
@@ -263,26 +449,30 @@ export class PurchasesService {
                     }
 
                     product.quantity = product.quantity + Number(purchase.quantity);
-                    const mainStore = await this.storeModel.findOne({ title: 'main store' });
+                    const mainDepartment = await this.departmentModel.findOne({ title: 'main department' });
 
-                    if (!mainStore) {
-                        throw new Error('No Main Store in Facility, Please Create A Main Store And Try Again');
+                    if (!mainDepartment) {
+                        throw new Error('No Main Department in Facility, Please Create A Main Department And Try Again');
                     }
 
-                    const storeProduct = mainStore.products.find((res) => res.product === product._id);
+                    const departmentProduct = mainDepartment.finishedGoods.find((res) => res.productId === product._id);
 
-                    if (storeProduct) {
-                        storeProduct.quantity = storeProduct.quantity + Number(purchase.quantity);
+                    if (departmentProduct) {
+                        departmentProduct.quantity = departmentProduct.quantity + Number(purchase.quantity);
                     } else {
-                        mainStore.products.push({
+                        mainDepartment.finishedGoods.push({
                             title: product.title,
-                            product: new mongoose.Types.ObjectId(product._id as string),
+                            productId: new mongoose.Types.ObjectId(product._id as string),
                             quantity: Number(purchase.quantity),
                             price: product.price,
+                            type: product.type,
+                            servingSize: product.cartonAmount,
+                            servingPrice: product.cartonPrice,
+                            sellUnits: product.sellUnits
                         });
                     }
 
-                    await mainStore.save();
+                    await mainDepartment.save();
                     await product.save();
                 }
 
@@ -293,13 +483,13 @@ export class PurchasesService {
                     }
 
                     product.quantity = product.quantity - Number(purchase.quantity);
-                    const mainStore = await this.storeModel.findOne({ title: 'main store' });
+                    const mainDepartment = await this.departmentModel.findOne({ title: 'main department' });
 
-                    if (!mainStore) {
-                        throw new Error('No Main Store in Facility, Please Create A Main Store And Try Again');
+                    if (!mainDepartment) {
+                        throw new Error('No Main Department in Facility, Please Create A Main Department And Try Again');
                     }
 
-                    const sendingProduct = mainStore.products.find((res) => res.product === product._id);
+                    const sendingProduct = mainDepartment.finishedGoods.find((res) => res.productId === product._id);
 
                     if (!sendingProduct) {
                         throw new Error('Product with id was not found. At this location');
@@ -307,7 +497,7 @@ export class PurchasesService {
 
                     sendingProduct.quantity = sendingProduct.quantity - Number(purchase.quantity);
 
-                    await mainStore.save();
+                    await mainDepartment.save();
                     await product.save();
                 }
             }
@@ -352,6 +542,7 @@ export class PurchasesService {
 
 
     async findFirstUnsoldPurchase(productId: string, req: any) {
+
         try {
             const purchase = await this.purchaseModel.findOne({
                 productId: productId,

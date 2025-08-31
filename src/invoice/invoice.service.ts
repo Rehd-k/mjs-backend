@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -7,25 +7,62 @@ import { Model } from 'mongoose';
 import { ActivityService } from 'src/activity/activity.service';
 import { QueryDto } from 'src/product/query.dto';
 import { errorLog } from 'src/helpers/do_loggers';
+import { Department } from 'src/department/entities/department.entity';
+import { InventoryService } from 'src/product/inventory.service';
+import { Customer } from 'src/customer/customer.schema';
 
 
 
 @Injectable()
 export class InvoiceService {
   // , private whatsappService: WhatsappService
-  constructor(@InjectModel(Invoice.name) private readonly invoiceModel: Model<Invoice>, private logService: ActivityService) { }
+  constructor(@InjectModel(Invoice.name) private readonly invoiceModel: Model<Invoice>,
+    @InjectModel(Department.name) private departmentModel: Model<Department>,
+    @InjectModel(Customer.name) private readonly customerModel: Model<Customer>,
+    private readonly inventoryService: InventoryService,
+    private logService: ActivityService) { }
+
   async create(createInvoiceDto: CreateInvoiceDto, req: any) {
     try {
       createInvoiceDto['initiator'] = req.user.username
       createInvoiceDto['location'] = req.user.location;
-      const invoice = await this.invoiceModel.create(createInvoiceDto)
-      this.logService.logAction(req.user.userId, req.user.username, 'Create Invoice', `Created Invoice for user with id ${invoice.customer}`)
-      return invoice;
+      const newInvoice = new this.invoiceModel(createInvoiceDto)
+      return await this.handleProducts(newInvoice, newInvoice.from, req)
+
+
+        // const invoice = await this.invoiceModel.create(createInvoiceDto)
+        // this.logService.logAction(req.user.userId, req.user.username, 'Create Invoice', `Created Invoice for user with id ${invoice.customer}`)
+        ;
     } catch (error) {
       errorLog(`error creating  invoice ${error}`, "ERROR")
       throw new BadRequestException(error);
     }
+  }
 
+  async handleProducts(invoice: Invoice, departmentId: string, req) {
+    const department = await this.departmentModel.findById(departmentId)
+
+    if (!department) {
+      throw new BadRequestException('Invalid request payload');
+    }
+    const senderProducts = new Map(
+      department.finishedGoods.map((p) => [p.productId.toString(), p])
+    );
+
+    for (const item of invoice.items) {
+      const sendingProduct = senderProducts.get(item.productId.toString());
+
+      if (!sendingProduct) {
+        throw new NotFoundException(
+          `Product "${item.title}" not found in sender's department`
+        );
+      }
+      sendingProduct.quantity -= item.quantity;
+      await this.inventoryService.deductStock(item.productId.toString(), item.quantity, req)
+    }
+    invoice.from = department.title
+
+    return await Promise.all([department.save(), invoice.save()])
   }
 
   async findAll(query: QueryDto, req: any): Promise<Invoice[]> {
@@ -37,47 +74,67 @@ export class InvoiceService {
       limit = 10,
       startDate,
       endDate,
-      selectedDateField
+      selectedDateField,
     } = query;
 
     const parsedFilter = JSON.parse(filter);
     const parsedSort = JSON.parse(sort);
+
     try {
+      // Date filter
       if (startDate && endDate && selectedDateField) {
         const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0); // Start of day
+        start.setHours(0, 0, 0, 0);
 
         const end = new Date(endDate);
-        end.setHours(24, 59, 59, 999); // End of day
+        end.setHours(23, 59, 59, 999);
 
         parsedFilter[selectedDateField] = { $gte: start, $lte: end };
       }
 
 
-      // Handle customer search
+      // Handle customer search by name or phone
       if (parsedFilter.customer) {
-        const customerQuery = parsedFilter.customer;
-        delete parsedFilter.customer;
 
-        parsedFilter['$or'] = [
-          { 'customer.name': { $regex: customerQuery['$regex'], $options: 'i' } },
-          { 'customer.phone_number': { $regex: customerQuery['$regex'], $options: 'i' } }
-        ];
+        const customerQuery = parsedFilter.customer['$regex'] || parsedFilter.customer;
+        if (parsedFilter.customer['$regex'] === '') {
+          delete parsedFilter.customer;
+        } else {
+          delete parsedFilter.customer;
+
+          // Find matching customers first
+          const customers = await this.customerModel
+            .find({
+              $or: [
+                { name: { $regex: customerQuery, $options: 'i' } },
+                { phone_number: { $regex: customerQuery, $options: 'i' } },
+              ],
+            })
+            .select('_id');
+
+          const customerIds: string[] = [];
+          customers.forEach((c: any) => {
+            customerIds.push(c._id.toString());
+          });
+
+          parsedFilter.customer = { $in: customerIds };
+        }
       }
 
 
-
-      const result = await this.invoiceModel.find({ ...parsedFilter, location: req.user.location })
+      const result = await this.invoiceModel
+        .find({ ...parsedFilter, location: req.user.location })
         .sort(parsedSort)
         .skip(Number(skip))
         .limit(Number(limit))
         .select(select)
         .populate('bank customer')
         .exec();
+
       return result;
     } catch (error) {
       errorLog(`Error fetching invoices: ${error.message}`, "ERROR")
-      throw new Error(`Error fetching invoices: ${error.message}`);
+      throw new InternalServerErrorException(`Error fetching invoices: ${error.message}`);
     }
   }
 

@@ -6,7 +6,7 @@ import { Roles } from 'src/helpers/role/roles.decorator';
 import { QueryDto } from 'src/product/query.dto';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
-// @UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('user')
 export class UserController {
     constructor(private userService: UserService) { }

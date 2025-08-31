@@ -22,6 +22,15 @@ export class PurchasesController {
     }
 
     @Roles(Role.God, Role.Admin, Role.Manager)
+    @Post('make-payment')
+    MakePAyment(@Body() createPurchaseDto: any, @Req() req: any) {
+        return this.purchasesService.updatePurchasePayment(createPurchaseDto, req);
+    }
+
+
+    updatePurchasePayment
+
+    @Roles(Role.God, Role.Admin, Role.Manager)
     @Get()
     findAll(
         @Query() query: QueryDto,

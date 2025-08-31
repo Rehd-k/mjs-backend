@@ -53,8 +53,10 @@ export class SalesService {
             const data = await this.saleModel.create(sellData);
 
             for (const element of data.products) {
-                await this.inventoryService.deductStock(element._id as any, element.quantity, req)
-                await this.inventoryService.addToSold(element._id as any, element.quantity)
+                if (sellData.invoiceId == '') {
+                    await this.inventoryService.deductStock(element.productId as any, element.quantity, req)
+                }
+                await this.inventoryService.addToSold(element.productId as any, element.quantity)
             }
             if (sellData.customer && sellData.customer !== '') {
 
@@ -72,9 +74,10 @@ export class SalesService {
 
 
         async function handle_break_down(element: any, purchaseService: PurchasesService) {
-            const purchase = await purchaseService.findFirstUnsoldPurchase(element._id, req);
+           
+            const purchase = await purchaseService.findFirstUnsoldPurchase(element.productId, req);
             if (!purchase)
-                throw new Error(`No purchase found for product ${element._id}`)
+                throw new Error(`No purchase found for product ${element.productId}`)
             const sold = purchase.sold.reduce((sum, item) => sum + (item.amount || 0), 0);
             const good_avalable_for_sale = purchase.quantity - sold;
             if (good_avalable_for_sale >= qunt_to_sell) {
@@ -547,7 +550,7 @@ export class SalesService {
             let cart = sale.products
 
             for (const returnItem of returns) {
-                const productIndex = cart.findIndex(product => product._id.toString() === returnItem.productId.toString());
+                const productIndex = cart.findIndex(product => product.productId.toString() === returnItem.productId.toString());
                 if (productIndex !== -1) {
 
                     let qunt_to_remove = returnItem.quantity
@@ -588,7 +591,7 @@ export class SalesService {
             await sale.save();
             for (const element of data.returns) {
                 await this.inventoryService.restockProduct(element.productId, element.quantity)
-                await this.inventoryService.deductFromSold(element._id as any, element.quantity)
+                await this.inventoryService.deductFromSold(element.productId as any, element.quantity)
             }
             await this.activityService.logAction(`${req.user.userId}`, req.user.username, 'Made Returns', `Made returns on transaction with Id ${data.transactionId}`)
             return sale;
@@ -622,7 +625,7 @@ export class SalesService {
             { $unwind: "$products" },
             {
                 $match: {
-                    "products._id": id,
+                    "products.productId": id,
                     createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) },
                     location: req.user.location
                 }
@@ -663,3 +666,89 @@ export class SalesService {
 
 
 }
+
+
+/**
+ * async doSell(sellData: any, req: any): Promise<any> {
+  let totalProfit = 0;
+
+  const session = await this.saleModel.db.startSession();
+  session.startTransaction();
+
+  try {
+    for (const product of sellData.products) {
+      let qtyToSell = product.quantity;
+      product.breakdown = [];
+
+      // Fetch unsold purchases until we've covered the quantity
+      while (qtyToSell > 0) {
+        const purchase = await this.purchaseService.findFirstUnsoldPurchase(product._id, req);
+        if (!purchase) {
+          throw new BadRequestException(`No purchase found for product ${product._id}`);
+        }
+
+        const alreadySold = purchase.sold.reduce((sum, s) => sum + (s.amount || 0), 0);
+        const available = purchase.quantity - alreadySold;
+
+        const sellQty = Math.min(available, qtyToSell);
+        const profit = (product.price - purchase.price) * sellQty;
+
+        product.breakdown.push({
+          orderBatch: purchase._id,
+          quantity: sellQty,
+          costPrice: purchase.price,
+          profit: product.price - purchase.price,
+          total_profit: profit,
+        });
+
+        purchase.sold.push({ amount: sellQty, price: product.price });
+        await purchase.save({ session });
+
+        totalProfit += profit;
+        qtyToSell -= sellQty;
+      }
+    }
+
+    // Set sale-level info
+    sellData.profit = totalProfit;
+    sellData.handler = req.user.username;
+    sellData.totalAmount = (sellData.cash || 0) + (sellData.card || 0) + (sellData.transfer || 0);
+    sellData.location = req.user.location;
+    sellData.transactionDate = new Date(sellData.transactionDate);
+
+    const sale = await this.saleModel.create([sellData], { session });
+    const savedSale = sale[0];
+
+    // Inventory updates
+    for (const product of savedSale.products) {
+      await this.inventoryService.deductStock(product._id as any, product.quantity, req, session);
+      await this.inventoryService.addToSold(product._id as any, product.quantity, session);
+    }
+
+    // Customer order tracking
+    if (sellData.customer) {
+      await this.customerService.addOrder(sellData.customer, savedSale._id, savedSale.totalAmount, session);
+    }
+
+    // Log activity
+    await this.activityService.logAction(
+      `${req.user.userId}`,
+      req.user.username,
+      'Made Sales',
+      `Transaction Id ${savedSale.transactionId}`,
+      session
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return savedSale.populate('customer bank');
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    errorLog(error, 'ERROR');
+    throw new InternalServerErrorException(error.message || error);
+  }
+}
+
+ */

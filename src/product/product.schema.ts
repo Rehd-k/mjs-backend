@@ -25,14 +25,8 @@ export class Product extends Document {
     @Prop({ required: true, trim: true, set: (title: string) => title.toLowerCase() })
     category: string;
 
-    @Prop({ min: 0, default: 0 })
-    purchasePrice: number;
-
     @Prop({ required: true, min: 0 })
     price: number;
-
-    @Prop({ type: [{ type: mongoose.Types.ObjectId }], ref: 'Purchase' })
-    purchases: mongoose.Types.ObjectId[];
 
     @Prop({ min: 0, default: 0 })
     roq: number
@@ -43,8 +37,11 @@ export class Product extends Document {
     @Prop({ trim: true })
     description: string;
 
-    @Prop({ default: 'unit', enum: ['unit', 'carton', 'portion', 'kg', 'crate'] })
-    type: String;
+    @Prop({ default: 'unit' })
+    type: string;
+
+    @Prop({ default: true })
+    sellUnits : boolean;
 
     @Prop({ min: 0 })
     cartonAmount: number
@@ -57,15 +54,6 @@ export class Product extends Document {
 
     @Prop({ trim: true, set: (title: string) => title.toLowerCase() })
     supplier: string;
-
-    @Prop({
-        set: (value: Date | string) => {
-            const date = new Date(value);
-            // Convert to GMT+1 by adding 1 hour (3600000 ms)
-            return new Date(date.getTime() + 60 * 60 * 1000);
-        }
-    })
-    expiryDate: Date;
 
     @Prop({ min: 0, default: 0 })
     weight: number;

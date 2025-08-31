@@ -77,9 +77,9 @@ export class AnalyticsService {
     for (const transaction of transactions) {
       totalRevenue += transaction.totalAmount;
       for (const item of transaction.products) {
-        const product = await this.productModel.findById(item._id);
+        const product = await this.productModel.findById(item.productId);
         if (product) {
-          totalCost += product.purchasePrice * item.quantity;
+          totalCost = 0
         } else {
           totalCost += 0;
         }
@@ -519,9 +519,9 @@ export class AnalyticsService {
    * Fetches and aggregates sales data for a product.
    */
   private async getSalesReport(productId: string, startDate: Date, endDate: Date) {
- 
-    
-     const result =  await this.saleModel.aggregate([
+
+
+    const result = await this.saleModel.aggregate([
       {
         $match: {
           transactionDate: { $gte: new Date(startDate), $lte: new Date(endDate) },
@@ -529,7 +529,7 @@ export class AnalyticsService {
         },
       },
       { $unwind: '$products' },
-      { $match: { 'products._id': productId } },
+      { $match: { 'products.productId': productId } },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$transactionDate' } },
@@ -631,12 +631,12 @@ export class AnalyticsService {
     return this.invoiceModel.aggregate([
       {
         $match: {
-          'items._id': objectIdProductId,
+          'items.productId': objectIdProductId,
           issuedDate: { $gte: new Date(startDate), $lte: new Date(endDate) },
         }
       },
       { $unwind: '$items' },
-      { $match: { 'items._id': objectIdProductId } },
+      { $match: { 'items.productId': objectIdProductId } },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$issuedDate' } },

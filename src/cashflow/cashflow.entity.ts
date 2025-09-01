@@ -11,7 +11,7 @@ export type CashflowDocument = Cashflow & Document;
             return new Date(now.getTime() + 60 * 60 * 1000);
         }
     }
-})
+}) 
 export class Cashflow {
     @Prop({ required: true, type: String })
     title: string;

@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, InternalServerErrorException } from '@
 import { CreateRawMaterialDto } from './dto/create-raw-material.dto';
 import { UpdateRawMaterialDto } from './dto/update-raw-material.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { RawMaterial } from './entities/raw-material.entity';
+import { RawMaterial } from './raw-material.entity';
 import { Model } from 'mongoose';
 import { errorLog } from 'src/helpers/do_loggers';
 import { QueryDto } from 'src/helpers/query.dto';
@@ -52,7 +52,6 @@ export class RawMaterialService {
         .select(select)
         .exec();
 
-      console.log(materials)
       const totalDocuments = await this.rawMaterialModel
         .countDocuments({ ...parsedFilter, location: req.user.location })
         .exec();
@@ -64,8 +63,9 @@ export class RawMaterialService {
     }
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     try {
+      console.log(id)
       return await this.rawMaterialModel.findById(id).exec();
     } catch (error) {
       errorLog(`Error finding this producs ${error}`, "ERROR")

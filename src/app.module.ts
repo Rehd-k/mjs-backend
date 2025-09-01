@@ -29,6 +29,9 @@ import { DepartmentModule } from './department/department.module';
 import { CreditorsModule } from './creditors/creditors.module';
 import { ServingSizeModule } from './serving-size/serving-size.module';
 import { RawMaterialModule } from './raw-material/raw-material.module';
+import { RmPurchasesModule } from './rm_purchases/rm_purchases.module';
+import { WorkInProgressModule } from './work-in-progress/work-in-progress.module';
+import { StockTrackerModule } from './stock-tracker/stock-tracker.module';
 
 @Module({
   imports: [
@@ -84,6 +87,9 @@ import { RawMaterialModule } from './raw-material/raw-material.module';
     CreditorsModule,
     ServingSizeModule,
     RawMaterialModule,
+    RmPurchasesModule,
+    WorkInProgressModule,
+    StockTrackerModule,
 
   ],
   controllers: [AppController],

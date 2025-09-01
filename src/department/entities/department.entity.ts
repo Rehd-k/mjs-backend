@@ -43,7 +43,7 @@ const DepartmentProductSchema = SchemaFactory.createForClass(DepartmentProduct);
         }
     }
 })
-class workInProgress {
+class RawGoods {
     @Prop()
     title: string;
 
@@ -57,9 +57,9 @@ class workInProgress {
     cost: number;
 
     @Prop()
-    type: string;
+    unit: string;
 }
-const WorkInProgressSchema = SchemaFactory.createForClass(workInProgress);
+const RawGoodsSchema = SchemaFactory.createForClass(RawGoods);
 
 
 @Schema({
@@ -125,8 +125,8 @@ export class Department {
     @Prop({ type: [DepartmentProductSchema], default: [] })
     finishedGoods: DepartmentProduct[];
 
-    @Prop({ type: [WorkInProgressSchema], default: [] })
-    workInProgress: workInProgress[]
+    @Prop({ type: [RawGoodsSchema], default: [] })
+    RawGoods: RawGoods[]
 }
 
 export const DepartmentSchema = SchemaFactory.createForClass(Department);

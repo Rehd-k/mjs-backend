@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import mongoose from "mongoose";
 
 function generateTransactionId(): string {
     return Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
@@ -21,7 +22,7 @@ export class RawMaterial {
     @Prop({ required: true, trim: true, set: (title: string) => title.toLowerCase() })
     category: string;
 
-    @Prop({ min: 1, default: 1 })
+    @Prop({ default: 1 })
     servingSize: number;
 
     @Prop({ min: 0, default: 0 })
@@ -38,6 +39,50 @@ export class RawMaterial {
 
     @Prop({ default: generateTransactionId() })
     barcode: string;
+
+
+    @Prop({ type: [{ type: mongoose.Types.ObjectId }], ref: 'Cashflow' })
+    payments: mongoose.Types.ObjectId[];
+
+    @Prop({
+        type: [{
+            date: Date,
+            quantity: Number,
+            reason: String,
+        }]
+    })
+    damagedGoods: {
+        date: Date;
+        quantity: number;
+        reason: string;
+    }[];
+
+
+    @Prop({
+        type: [{
+            date: Date,
+            quantity: Number,
+            reason: String,
+        }]
+    })
+    returns: {
+        date: Date;
+        quantity: number;
+        reason: string;
+    }[];
+
+
+    @Prop({
+        type: [{
+            amount: Number,
+            price: Number
+        }]
+    })
+    sold: {
+        amount: number;
+        price: number;
+
+    }[]
 
     @Prop({ required: true, default: 0 })
     initiator: String

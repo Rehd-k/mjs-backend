@@ -12,8 +12,9 @@ import { CashflowModule } from 'src/cashflow/cashflow.module';
   imports: [
     DepartmentModule,
     CashflowModule,
+       SupplierModule,
     MongooseModule.forFeature([{ name: Purchase.name, schema: PurchaseSchema }]),
-    SupplierModule,
+ 
     forwardRef(() => ProductModule)
   ],
   providers: [PurchasesService],

@@ -30,7 +30,7 @@ export class RawMaterialController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.rawMaterialService.findOne(+id);
+    return this.rawMaterialService.findOne(id);
   }
 
   @Patch(':id')

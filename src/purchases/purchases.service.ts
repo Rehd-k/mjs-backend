@@ -27,26 +27,12 @@ export class PurchasesService {
             createPurchaseDto.location = req.user.location;
             createPurchaseDto.initiator = req.user.username;
             const createdPurchase = new this.purchaseModel(createPurchaseDto);
-
-            if (createdPurchase.debt < createdPurchase.totalPayable) {
-                const paymentInfo = {
-                    title: 'Purchase Payment',
-                    paymentFor: createdPurchase._id,
-                    cash: createdPurchase.cash,
-                    bank: createdPurchase.bank,
-                    type: 'out',
-                    moneyFrom: createdPurchase.moneyFrom,
-                    transactionDate: createdPurchase.purchaseDate,
-                    initiator: req.user.username,
-                    location: req.user.location
-                }
-                await this.cashflowService.createPayment(paymentInfo);
-            }
+            const product = await this.productService.findOne(createdPurchase.productId.toString());
+            if (!product)
+                throw new BadRequestException('Product Not Found')
 
             if (createdPurchase.status === 'Delivered') {
-                const product = await this.productService.findOne(createdPurchase.productId.toString());
-                if (!product)
-                    throw new BadRequestException('Product Not Found')
+
                 product.quantity = product.quantity + Number(createdPurchase.quantity);
 
                 const mainDepartment = await this.departmentModel.findOne({ _id: createdPurchase.dropOfLocation })
@@ -92,7 +78,7 @@ export class PurchasesService {
             await this.supplierService.addOrder(createdPurchase.supplier, order._id);
             if (createdPurchase.debt < createdPurchase.totalPayable) {
                 const paymentInfo = {
-                    title: 'Purchase Payment',
+                    title: `Purchase Payment ${product.title}`,
                     paymentFor: createdPurchase._id,
                     cash: createdPurchase.cash,
                     bank: createdPurchase.bank,
@@ -106,7 +92,6 @@ export class PurchasesService {
             }
             return order
         } catch (error) {
-
             errorLog(`Failed to create purchase ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
@@ -144,8 +129,6 @@ export class PurchasesService {
         const updatedPurchase = await purchase.save()
         return updatedPurchase
     }
-
-
 
     async getDashboardData(id: string) {
         const pipeline = [
@@ -449,7 +432,7 @@ export class PurchasesService {
                     }
 
                     product.quantity = product.quantity + Number(purchase.quantity);
-                    const mainDepartment = await this.departmentModel.findOne({ title: 'main department' });
+                    const mainDepartment = await this.departmentModel.findOne({ id: updatePurchaseDto.departmentId });
 
                     if (!mainDepartment) {
                         throw new Error('No Main Department in Facility, Please Create A Main Department And Try Again');

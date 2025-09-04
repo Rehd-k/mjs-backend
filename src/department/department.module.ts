@@ -14,6 +14,6 @@ import { DepartmentHistortyController } from './history.controller';
   ])],
   controllers: [DepartmentController, DepartmentHistortyController],
   providers: [DepartmentService, DepartmentHistoryService],
-  exports: [MongooseModule]
+  exports: [MongooseModule, DepartmentService]
 })
 export class DepartmentModule { }

@@ -65,7 +65,6 @@ export class RawMaterialService {
 
   async findOne(id: string) {
     try {
-      console.log(id)
       return await this.rawMaterialModel.findById(id).exec();
     } catch (error) {
       errorLog(`Error finding this producs ${error}`, "ERROR")

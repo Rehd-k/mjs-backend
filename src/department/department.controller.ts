@@ -26,8 +26,8 @@ export class DepartmentController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return await this.departmentService.findOne(id);
+  async findOne(@Param('id') id: string, @Query() query: any) {
+    return await this.departmentService.findOne(id, query);
   }
 
   @Get('for-sell/:id')
@@ -38,7 +38,7 @@ export class DepartmentController {
   @Post('move-stock')
   async moveStock(@Query() query: any, @Body('body') body: any) {
 
-    return await this.departmentService.sendOrReceiveStock(query.senderId, query.receiverId, body);
+    return await this.departmentService.sendOrReceiveStock(query.senderId, query.receiverId, query.from, body);
   }
 
   @Patch(':id')

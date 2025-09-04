@@ -5,6 +5,15 @@ import mongoose, { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { errorLog } from 'src/helpers/do_loggers';
 
+interface StockItem {
+  productId: string;
+  title: string;
+  price: number;
+  toSend: number;
+  cost: number;
+  unitCost: number;
+}
+
 @Injectable()
 export class DepartmentService {
   constructor(@InjectModel(Department.name) private departmentModel: Model<Department>) { }
@@ -34,9 +43,11 @@ export class DepartmentService {
 
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, query: any) {
+
     try {
       const department = await this.departmentModel.findById(id)
+        .select(`title description initiator type ${query.select}`)
         // .populate({
         //   path: 'products.product', // 👈 nested path populate
         //   model: 'Product',
@@ -54,7 +65,7 @@ export class DepartmentService {
 
   async getProductsForSell(id: string, query: any) {
     const { searchQuery, skip = 0, limit = 10 } = query;
-  
+
     try {
       const department = await this.departmentModel.aggregate([
         // 1. Match parent doc
@@ -108,7 +119,113 @@ export class DepartmentService {
   }
 
 
+  /** Fetch a department by ID */
+  private async getDepartmentById(id: string) {
+    const department = await this.departmentModel.findById(id);
+    if (!department) {
+      throw new NotFoundException(`Department with ID ${id} not found`);
+    }
+    return department;
+  }
+
+  /** Decrease stock in a department */
+  public decreaseStock(
+    department: Department,
+    section: string,
+    productId: string,
+    quantity: number,
+    title: string,
+  ): void {
+    const product = department[section].find((p) => p.productId.toString() === productId);
+
+    if (!product) {
+      throw new NotFoundException(`Product "${title}" not found in department`);
+    }
+
+    if (product.quantity < quantity) {
+      throw new BadRequestException(`Insufficient stock for "${title}"`);
+    }
+
+    product.quantity -= quantity;
+    product.cost = product.quantity * product.unitCost
+  }
+
+  /** Increase stock in a department */
+  public increaseStock(
+    department: any,
+    section: string,
+    productId: string,
+    item: Omit<StockItem, 'toSend'> & { quantity: number },
+    senderProduct: any,
+  ): void {
+    const product = department[section].find((p) => p.productId.toString() === productId);
+
+    if (product) {
+      product.quantity += item.quantity;
+      product.cost = product.quantity * product.unitCost
+    } else {
+      department[section].push({
+        productId: new mongoose.Types.ObjectId(productId),
+        title: item.title,
+        price: item.price,
+        cost: item.quantity * item.unitCost,
+        unitCost: item.unitCost,
+        quantity: item.quantity,
+        type: senderProduct.type,
+        servingSize: senderProduct.servingSize,
+        servingPrice: senderProduct.servingPrice,
+        sellUnits: senderProduct.sellUnits,
+      });
+    }
+  }
+
+  /** Transfer stock from one department to another */
   async sendOrReceiveStock(
+    senderId: string,
+    receiverId: string,
+    section: string,
+    body: StockItem[],
+  ): Promise<boolean> {
+    try {
+      if (!senderId || !receiverId || !Array.isArray(body) || !section || body.length === 0) {
+        throw new BadRequestException('Invalid request payload');
+      }
+
+      const [sender, receiver] = await Promise.all([
+        this.getDepartmentById(senderId),
+        this.getDepartmentById(receiverId),
+      ]);
+
+      for (const item of body) {
+        const { productId, title, toSend } = item;
+
+        if (!toSend || toSend <= 0) {
+          throw new BadRequestException(`Invalid quantity for ${title}`);
+        }
+
+        // Decrease stock from sender
+        this.decreaseStock(sender, section, productId, toSend, title);
+
+        // Find sender product for copying details
+        const senderProduct = sender[section].find((p) => p.productId.toString() === productId);
+
+        // Increase stock in receiver
+        this.increaseStock(receiver, section, productId, { ...item, quantity: toSend }, senderProduct);
+      }
+
+      await Promise.all([sender.save(), receiver.save()]);
+      return true;
+    } catch (error) {
+      errorLog(`Error sending/receiving stock: ${error.message}`, 'ERROR');
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to process stock transfer');
+    }
+  }
+
+
+  async sendOrReceive(
     senderId: string,
     receiverId: string,
     body: { productId: string; title: string; price: number; toSend: number }[]
@@ -151,7 +268,7 @@ export class DepartmentService {
         }
         if (sendingProduct.quantity < toSend) {
           throw new BadRequestException(
-            `Insufficient stock of "${title}" at sender's department`
+            `Insufficient stock for "${title}" at sender's department`
           );
         }
         sendingProduct.quantity -= toSend;

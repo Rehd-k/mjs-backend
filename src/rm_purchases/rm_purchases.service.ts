@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { CreateRmPurchaseDto } from './dto/create-rm_purchase.dto';
-import { UpdateRmPurchaseDto } from './dto/update-rm_purchase.dto';
 import { RmPurchase } from './rm_purchase.entity';
 import mongoose, { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
@@ -30,7 +28,6 @@ export class RmPurchasesService {
       CreateRmPurchaseDto.location = req.user.location;
       CreateRmPurchaseDto.initiator = req.user.username;
       const createdRmPurchase = new this.RmPurchaseModel(CreateRmPurchaseDto);
-      console.log(CreateRmPurchaseDto)
       const rmProduct = await this.rawMaterialModel.findOne({ _id: createdRmPurchase.rawmaterialId.toString() });
       if (!rmProduct)
         throw new BadRequestException('Raw Material Not Found')
@@ -45,17 +42,17 @@ export class RmPurchasesService {
           return res.productId.toString() == rmProduct._id.toString();
         })
 
-
         if (departmentProduct == -1) {
-          mainDepartment.RawGoods.push(
+            mainDepartment.RawGoods.push(
             {
               title: rmProduct.title,
               productId: new mongoose.Types.ObjectId(rmProduct._id),
               quantity: Number(createdRmPurchase.quantity),
               cost: Number(createdRmPurchase.totalPayable),
               unit: rmProduct.unit,
+              unitCost: Math.round(Number(createdRmPurchase.totalPayable) / Number(createdRmPurchase.quantity))
             }
-          )
+            )
         } else {
           mainDepartment.RawGoods[departmentProduct].quantity = mainDepartment.finishedGoods[departmentProduct].quantity + Number(createdRmPurchase.quantity)
         }
@@ -80,7 +77,7 @@ export class RmPurchasesService {
       }
       return order
     } catch (error) {
-      errorLog(`Failed to create purchase ${error}`, "ERROR")
+      errorLog(`Failed to create rm purchase ${error}`, "ERROR")
       throw new BadRequestException(error);
     }
 
@@ -430,6 +427,7 @@ export class RmPurchasesService {
         quantity: Number(rmPurchase.quantity),
         cost: rmPurchase.totalPayable,
         unit: rmProduct.unit,
+        unitCost: Number(rmPurchase.totalPayable) / Number(rmPurchase.quantity)
       });
     }
 

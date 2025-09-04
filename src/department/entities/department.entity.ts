@@ -3,7 +3,16 @@ import mongoose, { Types } from "mongoose";
 
 export type DepartmentDocument = Department & Document;
 
-@Schema()
+@Schema({
+    timestamps: {
+        currentTime: () => {
+            // Create a date in GMT+1 (Central European Time)
+            const now = new Date();
+            // Get UTC time and add 1 hour (3600000 ms)
+            return new Date(now.getTime() + 60 * 60 * 1000);
+        }
+    }
+})
 class DepartmentProduct {
     @Prop()
     title: string;
@@ -56,6 +65,9 @@ class RawGoods {
     @Prop({ required: true, min: 0 })
     cost: number;
 
+    @Prop({ required: true, min: 0 })
+    unitCost: number;
+
     @Prop()
     unit: string;
 }
@@ -72,23 +84,7 @@ const RawGoodsSchema = SchemaFactory.createForClass(RawGoods);
         }
     }
 })
-class RawMaterial {
-    @Prop()
-    title: string;
 
-    @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'RawMaterial' })
-    productId: Types.ObjectId;
-
-    @Prop({ default: 0 })
-    quantity: number;
-
-    @Prop({ required: true, min: 0 })
-    cost: number;
-
-    @Prop()
-    type: string;
-}
-const RawMaterialSchema = SchemaFactory.createForClass(RawMaterial);
 
 @Schema({
     timestamps: {

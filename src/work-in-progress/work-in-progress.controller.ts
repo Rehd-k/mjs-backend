@@ -18,6 +18,17 @@ export class WorkInProgressController {
     return this.workInProgressService.create(createWorkInProgressDto, req);
   }
 
+  @Post()
+  handleCost(@Body() createWorkInProgressDto: CreateWorkInProgressDto, @Req() req: any) {
+    return this.workInProgressService.create(createWorkInProgressDto, req);
+  }
+
+  @Get('handle-other-cost')
+  doAddCost(@Query() query: any) {
+    console.log(query)
+    return this.workInProgressService.doAddCost(query.id, { title: query.title, cost: query.cost }, query.removeId, query.totalCost)
+  }
+
   @Get()
   findAll(
     @Req() req: any,

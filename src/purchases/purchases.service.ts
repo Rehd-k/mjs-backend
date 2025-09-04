@@ -47,14 +47,7 @@ export class PurchasesService {
 
 
                 if (departmentProduct == -1) {
-                    const newProduct = {
-                        title: product.title,
-                        product: new mongoose.Types.ObjectId(product._id as string),
-                        quantity: Number(createdPurchase.quantity),
-                        price: product.price,
-                        type: product.type,
-                        servingSize: product.cartonAmount
-                    }
+
 
                     mainDepartment.finishedGoods.push(
                         {
@@ -75,7 +68,9 @@ export class PurchasesService {
                 await Promise.all([mainDepartment.save(), product.save()]);
             }
             const order = await createdPurchase.save();
-            await this.supplierService.addOrder(createdPurchase.supplier, order._id);
+            if (createdPurchase.supplier) {
+                await this.supplierService.addOrder(createdPurchase.supplier, order._id);
+            }
             if (createdPurchase.debt < createdPurchase.totalPayable) {
                 const paymentInfo = {
                     title: `Purchase Payment ${product.title}`,
@@ -95,7 +90,6 @@ export class PurchasesService {
             errorLog(`Failed to create purchase ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
-
     }
 
     async updatePurchasePayment(createCashflowDto: any, req: any) {
@@ -352,7 +346,8 @@ export class PurchasesService {
                 .select(`${select}`)     // Projection of main document fields
                 .populate({
                     path: 'supplier',
-                    select: 'name' // Selecting only the 'name' field from the supplier
+                    select: 'name',// Selecting only the 'name' field from the supplier
+                    match: { _id: { $exists: true } }
                 })
                 .exec();
             const totalDocuments = await this.purchaseModel

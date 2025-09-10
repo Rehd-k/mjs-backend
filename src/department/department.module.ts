@@ -6,12 +6,16 @@ import { Department, DepartmentSchema } from './entities/department.entity';
 import { DepartmentHistory, DepartmentHistorySchema } from './entities/department.history.entity';
 import { DepartmentHistoryService } from './department.history.service';
 import { DepartmentHistortyController } from './history.controller';
+import { StockFlowModule } from 'src/stock-flow/stock-flow.module';
 
 @Module({
-  imports: [MongooseModule.forFeature([
-    { name: Department.name, schema: DepartmentSchema },
-    { name: DepartmentHistory.name, schema: DepartmentHistorySchema }
-  ])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Department.name, schema: DepartmentSchema },
+      { name: DepartmentHistory.name, schema: DepartmentHistorySchema },
+
+    ]), StockFlowModule],
+
   controllers: [DepartmentController, DepartmentHistortyController],
   providers: [DepartmentService, DepartmentHistoryService],
   exports: [MongooseModule, DepartmentService]

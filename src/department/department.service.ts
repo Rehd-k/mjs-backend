@@ -1,22 +1,29 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { Department } from './entities/department.entity'
-import mongoose, { Model } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { errorLog } from 'src/helpers/do_loggers';
+import { StockFlowService } from 'src/stock-flow/stock-flow.service';
+import { DepartmentHistory } from './entities/department.history.entity';
 
 interface StockItem {
-  productId: string;
+  product: string;
   title: string;
   price: number;
   toSend: number;
   cost: number;
   unitCost: number;
+  productId: any
 }
 
 @Injectable()
 export class DepartmentService {
-  constructor(@InjectModel(Department.name) private departmentModel: Model<Department>) { }
+  constructor(
+    @InjectModel(Department.name) private departmentModel: Model<Department>,
+    private readonly stockFlowService: StockFlowService,
+    @InjectModel(DepartmentHistory.name) private departmentHistoryModel: Model<DepartmentHistory>,
+  ) { }
   async create(createDepartmentDto: CreateDepartmentDto, req: any) {
     try {
       const newDepartmentData = new this.departmentModel(createDepartmentDto)
@@ -44,15 +51,14 @@ export class DepartmentService {
   }
 
   async findOne(id: string, query: any) {
-
     try {
       const department = await this.departmentModel.findById(id)
         .select(`title description initiator type ${query.select}`)
-        // .populate({
-        //   path: 'products.product', // 👈 nested path populate
-        //   model: 'Product',
-        //   select: 'title price quantity type cartonAmount'
-        // })
+        .populate({
+          path: `${query.select}.productId`, // 👈 nested path populate
+          model: `${query.select == 'RawGoods' ? 'RawMaterial' : 'Product'}`,
+          // select: 'title price quantity type servingPrice cost servingQuantity',
+        })
         .exec();
       return department;
     } catch (error) {
@@ -61,57 +67,104 @@ export class DepartmentService {
     }
   }
 
-
-
   async getProductsForSell(id: string, query: any) {
     const { searchQuery, skip = 0, limit = 10 } = query;
 
     try {
-      const department = await this.departmentModel.aggregate([
-        // 1. Match parent doc
-        { $match: { _id: new mongoose.Types.ObjectId(id) } },
+      // Convert skip and limit to numbers
+      const skipNum = parseInt(skip as string, 10) || 0;
+      const limitNum = parseInt(limit as string, 10) || 10;
 
-        // 2. Filter products by title
+      const pipeline = [
+        {
+          $match: {
+            _id: new Types.ObjectId(id),
+          },
+        },
+        {
+          $lookup: {
+            from: 'products', // Adjust if your Product collection name is different
+            localField: 'finishedGoods.productId',
+            foreignField: '_id',
+            as: 'tempProducts',
+          },
+        },
         {
           $addFields: {
-            filteredProducts: {
+            finishedGoods: {
+              $map: {
+                input: '$finishedGoods',
+                as: 'fg',
+                in: {
+                  quantity: '$$fg.quantity',
+                  product: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: '$tempProducts',
+                          as: 'p',
+                          cond: {
+                            $eq: ['$$p._id', '$$fg.productId'],
+                          },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            finishedGoods: {
               $filter: {
-                input: "$products",
-                as: "p",
+                input: '$finishedGoods',
+                as: 'fg',
                 cond: {
                   $regexMatch: {
-                    input: "$$p.title",
-                    regex: searchQuery,   // ← your frontend search query
-                    options: "i"          // case-insensitive
-                  }
-                }
-              }
-            }
-          }
+                    input: '$$fg.product.title',
+                    regex: searchQuery,
+                    options: 'i', // Case-insensitive partial match
+                  },
+                },
+              },
+            },
+          },
         },
-
-        // Sort the filtered array alphabetically by title
         {
           $addFields: {
-            filteredProducts: {
+            total: { $size: '$finishedGoods' }, // Total matching documents
+            finishedGoods: {
               $sortArray: {
-                input: "$filteredProducts",
-                sortBy: { title: 1 } // ascending, use -1 for descending
-              }
-            }
-          }
+                input: '$finishedGoods',
+                sortBy: { 'product.title': 1 }, // Sort alphabetically by product.title
+              },
+            },
+          },
         },
-
-        // 3. Slice the filtered products for pagination
+        {
+          $addFields: {
+            finishedGoods: { $slice: ['$finishedGoods', skipNum, limitNum] }, // Paginate with converted numbers
+          },
+        },
         {
           $project: {
-            total: 1,
-            products: { $slice: ["$filteredProducts", Number(skip), Number(limit)] },
-            totalDocuments: { $size: "$filteredProducts" } // for pagination metadata
-          }
-        }
-      ]);
-      return department[0]
+            _id: 1,
+            finishedGoods: 1,
+            total: 1, // Include total count of matching documents
+          },
+        },
+        {
+          $unset: ['tempProducts'], // Clean up temporary field
+        },
+      ];
+
+      const result = await this.departmentModel.aggregate(pipeline).exec();
+
+      return result[0] || null;
+
     } catch (error) {
       errorLog(`Error getting one department: ${error}`, "ERROR")
       throw new NotFoundException(`Error getting one department: ${error.message}`);
@@ -136,8 +189,7 @@ export class DepartmentService {
     quantity: number,
     title: string,
   ): void {
-    const product = department[section].find((p) => p.productId.toString() === productId);
-
+    const product = department[section].find((p) => p.productId.toString() === productId.toString());
     if (!product) {
       throw new NotFoundException(`Product "${title}" not found in department`);
     }
@@ -158,8 +210,13 @@ export class DepartmentService {
     item: Omit<StockItem, 'toSend'> & { quantity: number },
     senderProduct: any,
   ): void {
-    const product = department[section].find((p) => p.productId.toString() === productId);
-
+    console.log(
+      section,
+      productId,
+      item,
+      senderProduct,
+    )
+    const product = department[section].find((p) => p.productId.toString() === productId.toString());
     if (product) {
       product.quantity += item.quantity;
       product.cost = product.quantity * product.unitCost
@@ -167,14 +224,9 @@ export class DepartmentService {
       department[section].push({
         productId: new mongoose.Types.ObjectId(productId),
         title: item.title,
-        price: item.price,
-        cost: item.quantity * item.unitCost,
-        unitCost: item.unitCost,
+        cost: item.quantity * senderProduct.unitCost,
+        unitCost: senderProduct.unitCost,
         quantity: item.quantity,
-        type: senderProduct.type,
-        servingSize: senderProduct.servingSize,
-        servingPrice: senderProduct.servingPrice,
-        sellUnits: senderProduct.sellUnits,
       });
     }
   }
@@ -185,7 +237,10 @@ export class DepartmentService {
     receiverId: string,
     section: string,
     body: StockItem[],
+    req: any,
+    newHistory: boolean
   ): Promise<boolean> {
+
     try {
       if (!senderId || !receiverId || !Array.isArray(body) || !section || body.length === 0) {
         throw new BadRequestException('Invalid request payload');
@@ -197,23 +252,38 @@ export class DepartmentService {
       ]);
 
       for (const item of body) {
-        const { productId, title, toSend } = item;
+
+        const { toSend, productId } = item;
 
         if (!toSend || toSend <= 0) {
-          throw new BadRequestException(`Invalid quantity for ${title}`);
+          throw new BadRequestException(`Invalid quantity for ${productId.title}`);
         }
-
         // Decrease stock from sender
-        this.decreaseStock(sender, section, productId, toSend, title);
+        this.decreaseStock(sender, section, productId._id, toSend, productId.title);
 
         // Find sender product for copying details
-        const senderProduct = sender[section].find((p) => p.productId.toString() === productId);
-
+        const senderProduct = sender[section].find((p) => p.productId.toString() === productId._id.toString());
+        console.log(senderProduct)
         // Increase stock in receiver
-        this.increaseStock(receiver, section, productId, { ...item, quantity: toSend }, senderProduct);
+        this.increaseStock(receiver, section, productId._id, { ...item, quantity: toSend }, senderProduct);
+        if (newHistory) {
+          await this.departmentHistoryModel.create({
+            from: sender.title,
+            fromId: sender._id,
+            to: receiver.title,
+            toId: receiver._id,
+            products: body,
+            section,
+            location: req.user.location,
+            closer: req.user.username,
+            initiator: req.user.username,
+          })
+        }
+        await this.stockFlowService.create('Stock Movement', productId.title, toSend, sender._id, receiver._id, 'contra', new Date(Date.now()), req.user.username, req.user.location)
       }
 
       await Promise.all([sender.save(), receiver.save()]);
+
       return true;
     } catch (error) {
       errorLog(`Error sending/receiving stock: ${error.message}`, 'ERROR');
@@ -223,85 +293,6 @@ export class DepartmentService {
       throw new BadRequestException('Failed to process stock transfer');
     }
   }
-
-
-  async sendOrReceive(
-    senderId: string,
-    receiverId: string,
-    body: { productId: string; title: string; price: number; toSend: number }[]
-  ): Promise<boolean> {
-    try {
-      if (!senderId || !receiverId || !Array.isArray(body) || body.length === 0) {
-        throw new BadRequestException('Invalid request payload');
-      }
-
-      const [sender, receiver] = await Promise.all([
-        this.departmentModel.findById(senderId),
-        this.departmentModel.findById(receiverId),
-      ]);
-
-
-      if (!sender) throw new NotFoundException('Sender department not found');
-      if (!receiver) throw new NotFoundException('Receiver department not found');
-
-      // Convert products to Map for faster access
-      const senderProducts = new Map(
-        sender.finishedGoods.map((p) => [p.productId.toString(), p])
-      );
-      const receiverProducts = new Map(
-        receiver.finishedGoods.map((p) => [p.productId.toString(), p])
-      );
-
-      for (const item of body) {
-        const { productId, title, price, toSend } = item;
-
-        if (!toSend || toSend <= 0) {
-          throw new BadRequestException(`Invalid quantity for ${title}`);
-        }
-
-        // Update sender stock
-        const sendingProduct = senderProducts.get(productId);
-        if (!sendingProduct) {
-          throw new NotFoundException(
-            `Product "${title}" not found in sender's department`
-          );
-        }
-        if (sendingProduct.quantity < toSend) {
-          throw new BadRequestException(
-            `Insufficient stock for "${title}" at sender's department`
-          );
-        }
-        sendingProduct.quantity -= toSend;
-
-        // Update or add receiver stock
-        const receivingProduct = receiverProducts.get(productId);
-        if (receivingProduct) {
-          receivingProduct.quantity += toSend;
-        } else {
-          receiver.finishedGoods.push({
-            productId: new mongoose.Types.ObjectId(productId),
-            title,
-            price,
-            quantity: toSend,
-            type: sendingProduct.type,
-            servingSize: sendingProduct.servingSize,
-            servingPrice: sendingProduct.servingPrice,
-            sellUnits: sendingProduct.sellUnits
-          });
-        }
-      }
-
-      await Promise.all([sender.save(), receiver.save()]);
-      return true;
-    } catch (error) {
-      errorLog(`Error sending/receiving stock: ${error.message}`, 'ERROR');
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new BadRequestException('Failed to process stock transfer');
-    }
-  }
-
 
   async update(id: string, updateDepartmentDto: any, filter: any) {
     try {

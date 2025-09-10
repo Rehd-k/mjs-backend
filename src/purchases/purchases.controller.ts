@@ -28,8 +28,6 @@ export class PurchasesController {
     }
 
 
-    updatePurchasePayment
-
     @Roles(Role.God, Role.Admin, Role.Manager)
     @Get()
     findAll(
@@ -51,16 +49,16 @@ export class PurchasesController {
     @Roles(Role.God, Role.Admin, Role.Manager)
 
     @Patch('update/:id')
-    async update(@Param('id') id: string, @Body() updatePurchaseDto: any) {
+    async update(@Param('id') id: string, @Body() updatePurchaseDto: any,
+        @Req() req: any) {
 
-        return await this.purchasesService.update(id, updatePurchaseDto);
+        return await this.purchasesService.update(id, updatePurchaseDto, req);
 
     }
 
     @Put('doDamage/:id')
-    async doDamage(@Param('id') id: string, @Body() updatePurchaseDto: any) {
-
-        return this.purchasesService.doDamagedGood(id, updatePurchaseDto);
+    async doDamage(@Param('id') id: string, @Body() updatePurchaseDto: any, @Req() req: any) {
+        return this.purchasesService.doDamagedGood(id, updatePurchaseDto, req);
     }
 
 }

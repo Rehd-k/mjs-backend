@@ -25,7 +25,6 @@ export class WorkInProgressController {
 
   @Get('handle-other-cost')
   doAddCost(@Query() query: any) {
-    console.log(query)
     return this.workInProgressService.doAddCost(query.id, { title: query.title, cost: query.cost }, query.removeId, query.totalCost)
   }
 

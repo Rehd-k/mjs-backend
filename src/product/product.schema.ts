@@ -44,10 +44,10 @@ export class Product extends Document {
     sellUnits : boolean;
 
     @Prop({ min: 0 })
-    cartonAmount: number
+    servingQuantity: number
 
     @Prop({ min: 0 })
-    cartonPrice: number
+    servingPrice: number
 
     @Prop({ trim: true, set: (title: string) => title.toLowerCase() })
     brand: string;

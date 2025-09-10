@@ -13,32 +13,14 @@ export type DepartmentDocument = Department & Document;
         }
     }
 })
-class DepartmentProduct {
-    @Prop()
-    title: string;
-
-    @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Product' })
+export class DepartmentProduct {
+    @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true })
     productId: Types.ObjectId;
 
-    @Prop({ default: 0 })
+    @Prop({ default: 0, required: true })
     quantity: number;
-
-    @Prop({ required: true, min: 0 })
-    price: number;
-
-    @Prop()
-    type: string;
-
-    @Prop({ default: 0 })
-    servingSize: number;
-
-    @Prop({ default: true })
-    sellUnits: boolean;
-
-    @Prop({ default: 0 })
-    servingPrice: number;
 }
-const DepartmentProductSchema = SchemaFactory.createForClass(DepartmentProduct);
+export const DepartmentProductSchema = SchemaFactory.createForClass(DepartmentProduct);
 
 
 
@@ -52,7 +34,7 @@ const DepartmentProductSchema = SchemaFactory.createForClass(DepartmentProduct);
         }
     }
 })
-class RawGoods {
+export class RawGoods {
     @Prop()
     title: string;
 
@@ -71,19 +53,7 @@ class RawGoods {
     @Prop()
     unit: string;
 }
-const RawGoodsSchema = SchemaFactory.createForClass(RawGoods);
-
-
-@Schema({
-    timestamps: {
-        currentTime: () => {
-            // Create a date in GMT+1 (Central European Time)
-            const now = new Date();
-            // Get UTC time and add 1 hour (3600000 ms)
-            return new Date(now.getTime() + 60 * 60 * 1000);
-        }
-    }
-})
+export const RawGoodsSchema = SchemaFactory.createForClass(RawGoods);
 
 
 @Schema({

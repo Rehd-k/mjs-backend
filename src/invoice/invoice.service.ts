@@ -3,13 +3,14 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Invoice } from './invoice.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { ActivityService } from 'src/activity/activity.service';
 import { QueryDto } from 'src/product/query.dto';
 import { errorLog } from 'src/helpers/do_loggers';
 import { Department } from 'src/department/entities/department.entity';
 import { InventoryService } from 'src/product/inventory.service';
 import { Customer } from 'src/customer/customer.schema';
+import { StockFlowService } from 'src/stock-flow/stock-flow.service';
 
 
 
@@ -20,6 +21,7 @@ export class InvoiceService {
     @InjectModel(Department.name) private departmentModel: Model<Department>,
     @InjectModel(Customer.name) private readonly customerModel: Model<Customer>,
     private readonly inventoryService: InventoryService,
+    private readonly stockFlowService: StockFlowService,
     private logService: ActivityService) { }
 
   async create(createInvoiceDto: CreateInvoiceDto, req: any) {
@@ -29,40 +31,17 @@ export class InvoiceService {
       const newInvoice = new this.invoiceModel(createInvoiceDto)
       return await this.handleProducts(newInvoice, newInvoice.from, req)
 
-
-        // const invoice = await this.invoiceModel.create(createInvoiceDto)
-        // this.logService.logAction(req.user.userId, req.user.username, 'Create Invoice', `Created Invoice for user with id ${invoice.customer}`)
-        ;
     } catch (error) {
       errorLog(`error creating  invoice ${error}`, "ERROR")
       throw new BadRequestException(error);
     }
   }
 
-  async handleProducts(invoice: Invoice, departmentId: string, req) {
-    const department = await this.departmentModel.findById(departmentId)
-
-    if (!department) {
-      throw new BadRequestException('Invalid request payload');
-    }
-    const senderProducts = new Map(
-      department.finishedGoods.map((p) => [p.productId.toString(), p])
-    );
-
+  async handleProducts(invoice: Invoice, departmentId: Types.ObjectId, req) {
     for (const item of invoice.items) {
-      const sendingProduct = senderProducts.get(item.productId.toString());
-
-      if (!sendingProduct) {
-        throw new NotFoundException(
-          `Product "${item.title}" not found in sender's department`
-        );
-      }
-      sendingProduct.quantity -= item.quantity;
-      await this.inventoryService.deductStock(item.productId.toString(), item.quantity, req)
+      await this.inventoryService.deductStock(item.productId.toString(), item.quantity, req, departmentId.toString(), 'Invoice', 'Credit Sells')
     }
-    invoice.from = department.title
-
-    return await Promise.all([department.save(), invoice.save()])
+    return await invoice.save();
   }
 
   async findAll(query: QueryDto, req: any): Promise<Invoice[]> {
@@ -255,11 +234,7 @@ export class InvoiceService {
   }
 
   async update(filter: string, updateInvoiceDto: UpdateInvoiceDto, req: any) {
-
-
     const invoice = await this.invoiceModel.findOne(JSON.parse(filter))
-
-
     if (!invoice) {
       throw new Error(`Invoice not found`);
     }
@@ -311,8 +286,6 @@ export class InvoiceService {
 
   async sendMessage(id: string) {
     const invoice = await this.invoiceModel.findById(id).populate('customer') as any;
-
-
     invoice.customer.phone_number = this.formatPhoneNumber(invoice.customer.phone_number)
 
 
@@ -328,8 +301,30 @@ export class InvoiceService {
 
   async remove(filter: any, req: any) {
     try {
-      await this.invoiceModel.findOneAndDelete(filter)
-      await this.logService.logAction(req.user.userId, req.user.username, 'Remove Invoice', `Removed Invoice with filter ${JSON.stringify(filter)}`)
+      const invoice = await this.invoiceModel.findOne(filter)
+      if (!invoice) {
+        throw new BadRequestException('Invoice Not Found')
+      }
+      const department = await this.departmentModel.findById(invoice.from)
+      if (!department) {
+        throw new BadRequestException('That Department Dossnt Exist Anymore');
+      }
+      const senderProducts = new Map(
+        department.finishedGoods.map((p) => [p.productId.toString(), p])
+      );
+
+      for (const item of invoice.items) {
+        const sendingProduct = senderProducts.get(item.productId.toString());
+
+        if (!sendingProduct) {
+          throw new NotFoundException(
+            `Product "${item.title}" not found in sender's department`
+          );
+        }
+        sendingProduct.quantity += item.quantity;
+        await this.stockFlowService.create('Returns Inward', item.title, item.quantity, 'Credit Sells', department._id, 'in', new Date(Date.now()), req.user.username, req.user.location)
+        await this.inventoryService.restockProduct(item.productId.toString(), item.quantity)
+      }
       return true;
     } catch (error) {
       errorLog(`Error removing one invoice: ${error}`, "ERROR")

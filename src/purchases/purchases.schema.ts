@@ -35,11 +35,11 @@ export class Purchase {
 
     // carton price (1 carton)
     @Prop({ default: 0, min: 0 })
-    cartonPrice: number
+    servingPrice: number
 
     // amount of cartons bought
     @Prop({ default: 0, min: 0 })
-    cartonQuanity: number
+    servingQuantity: number
 
     @Prop({ required: true })
     totalPayable: number;

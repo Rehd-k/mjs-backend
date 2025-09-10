@@ -7,6 +7,8 @@ import { Sale, SaleSchema } from './sales.schema';
 import { PurchasesModule } from 'src/purchases/purchases.module';
 import { CustomerModule } from 'src/customer/customer.module';
 import { ActivityModule } from 'src/activity/activity.module';
+import { StockFlowModule } from 'src/stock-flow/stock-flow.module';
+import { DepartmentModule } from 'src/department/department.module';
 @Module({
   imports: [
     forwardRef(() => ProductModule),
@@ -14,8 +16,10 @@ import { ActivityModule } from 'src/activity/activity.module';
     MongooseModule.forFeature([
       { name: Sale.name, schema: SaleSchema }
     ]),
+    StockFlowModule,
     PurchasesModule,
-    ActivityModule
+    ActivityModule,
+    DepartmentModule
   ],
   providers: [SalesService],
   controllers: [SalesController],

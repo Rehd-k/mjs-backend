@@ -64,8 +64,8 @@ export class Invoice extends Document {
     @Prop({ required: true, unique: true })
     invoiceNumber: string;
 
-    @Prop({ required: true, type: String, default: '' })
-    from: string;
+    @Prop({ required: true, type: Types.ObjectId, ref: 'Department', default: null })
+    from: Types.ObjectId;
 
 
     @Prop({ type: [CartProduct] })

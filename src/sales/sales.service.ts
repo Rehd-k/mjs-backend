@@ -1,4 +1,4 @@
-import { BadRequestException, forwardRef, Inject, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { InventoryService } from 'src/product/inventory.service';
@@ -9,6 +9,8 @@ import { FilterQuery } from 'mongoose';
 import { CustomerService } from 'src/customer/customer.service';
 import { ActivityService } from 'src/activity/activity.service';
 import { errorLog } from 'src/helpers/do_loggers';
+import { StockFlowService } from 'src/stock-flow/stock-flow.service';
+import { Department } from 'src/department/entities/department.entity';
 
 
 
@@ -17,16 +19,18 @@ export class SalesService {
     constructor(
         @Inject(forwardRef(() => InventoryService)) private inventoryService: InventoryService,
         @InjectModel(Sale.name) private readonly saleModel: Model<Sale>,
+        @InjectModel(Department.name) private departmentModel: Model<Department>,
+        private readonly stockFlowService: StockFlowService,
         private activityService: ActivityService,
         private customerService: CustomerService,
         private purchaseService: PurchasesService,
+
     ) { }
 
     async doSell(sellData: any, req: any): Promise<any> {
         let qunt_to_sell = 0;
         let profit = 0;
         try {
-
             for (const element of sellData.products) {
 
                 qunt_to_sell = element.quantity
@@ -43,18 +47,15 @@ export class SalesService {
                     throw new BadRequestException(error);
                 }
             }
-
-
             sellData.profit = profit;
             sellData.handler = req.user.username;
             sellData.totalAmount = sellData.cash + sellData.card + sellData.transfer
             sellData.location = req.user.location
             sellData.transactionDate = new Date(sellData.transactionDate)
             const data = await this.saleModel.create(sellData);
-
             for (const element of data.products) {
-                if (sellData.invoiceId == '') {
-                    await this.inventoryService.deductStock(element.productId as any, element.quantity, req)
+                if (!sellData.invoiceId) {
+                    await this.inventoryService.deductStock(element.productId.toString(), element.quantity, req, element.from, 'Sells', 'sells')
                 }
                 await this.inventoryService.addToSold(element.productId as any, element.quantity)
             }
@@ -62,7 +63,7 @@ export class SalesService {
 
                 await this.customerService.addOrder(sellData.customer, data._id, data.totalAmount)
             }
-            await this.activityService.logAction(`${req.user.userId}`, req.user.username, 'Made Sales', `Transaction Id ${data.transactionId}`)
+            await this.activityService.logAction(`${req.user.userId}`, req.user.username, 'Made Sell', `Transaction Id ${data.transactionId}`)
             return data.populate('customer bank')
         } catch (error) {
             errorLog(error, "ERROR")
@@ -74,7 +75,7 @@ export class SalesService {
 
 
         async function handle_break_down(element: any, purchaseService: PurchasesService) {
-           
+
             const purchase = await purchaseService.findFirstUnsoldPurchase(element.productId, req);
             if (!purchase)
                 throw new Error(`No purchase found for product ${element.productId}`)
@@ -529,7 +530,7 @@ export class SalesService {
             throw new BadRequestException(error);
         }
     }
-
+    // Remeber to send in department id, to cover for data.from instead of department id
     async return(id: string, data: any, req: any) {
         try {
             if (!data.handler) {
@@ -590,9 +591,28 @@ export class SalesService {
 
             await sale.save();
             for (const element of data.returns) {
+                const department = await this.departmentModel.findById(data.from)
+
+                if (!department) {
+                    throw new BadRequestException('Invalid request payload');
+                }
+                const senderProducts = new Map(
+                    department.finishedGoods.map((p) => [p.productId.toString(), p])
+                );
+                const sendingProduct = senderProducts.get(element.productId.toString());
+                if (!sendingProduct) {
+                    throw new NotFoundException(
+                        `Product "${element.title}" not found this department`
+                    );
+                }
+                sendingProduct.quantity += element.quantity;
+                await department.save()
                 await this.inventoryService.restockProduct(element.productId, element.quantity)
                 await this.inventoryService.deductFromSold(element.productId as any, element.quantity)
+                await this.stockFlowService.create('Returns Inward', element.title, element.quantity, 'sells', data.from, 'in', new Date(Date.now()), req.user.username, req.user.location)
             }
+
+
             await this.activityService.logAction(`${req.user.userId}`, req.user.username, 'Made Returns', `Made returns on transaction with Id ${data.transactionId}`)
             return sale;
         } catch (e) {

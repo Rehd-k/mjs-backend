@@ -31,7 +31,10 @@ import { ServingSizeModule } from './serving-size/serving-size.module';
 import { RawMaterialModule } from './raw-material/raw-material.module';
 import { RmPurchasesModule } from './rm_purchases/rm_purchases.module';
 import { WorkInProgressModule } from './work-in-progress/work-in-progress.module';
-import { StockTrackerModule } from './stock-tracker/stock-tracker.module';
+import { StockFlowModule } from './stock-flow/stock-flow.module';
+import { StockSnapshotModule } from './stock-snapshot/stock-snapshot.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ReqisitionModule } from './reqisition/reqisition.module';
 
 @Module({
   imports: [
@@ -89,8 +92,10 @@ import { StockTrackerModule } from './stock-tracker/stock-tracker.module';
     RawMaterialModule,
     RmPurchasesModule,
     WorkInProgressModule,
-    StockTrackerModule,
-
+    StockFlowModule,
+    StockSnapshotModule,
+    ScheduleModule.forRoot(),
+    ReqisitionModule
   ],
   controllers: [AppController],
   providers: [AppService],

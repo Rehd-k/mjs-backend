@@ -10,7 +10,6 @@ import { Supplier, SupplierSchema } from './supplier.schema';
   imports: [
     MongooseModule.forFeature([
       { name: Supplier.name, schema: SupplierSchema },
-      { name: Product.name, schema: ProductSchema },
     ])
   ],
   providers: [SupplierService],

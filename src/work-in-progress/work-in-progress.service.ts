@@ -25,8 +25,6 @@ export class WorkInProgressService {
       createWorkInProgressDto.location = req.user.location;
       createWorkInProgressDto.initiator = req.user.username;
       let sendingStore = await this.departmentModel.findById(at);
-
-
       if (!sendingStore) {
         throw new BadRequestException(`Can\'t Find This Department`)
       }
@@ -37,8 +35,9 @@ export class WorkInProgressService {
           const existingIndex = existingProcess.rawGoods.findIndex(
             (raw) => raw.title === newRaw.title,
           );
+ 
 
-          const product = sendingStore['RawGoods'].find((p) => p.productId.toString() === newRaw.productId);
+          const product = sendingStore['RawGoods'].find((p) => p.productId.toString() === newRaw.productId._id);
           if (!product) {
             throw new NotFoundException(`Product "${title}" not found in department`);
           }
@@ -67,15 +66,14 @@ export class WorkInProgressService {
       }
 
       for (const newRaw of rawGoods) {
-        const product = sendingStore['RawGoods'].find((p) => p.productId.toString() === newRaw.productId);
+        const product = sendingStore['RawGoods'].find((p) => p.productId.toString() === newRaw.productId._id);
         if (!product) {
-          throw new NotFoundException(`Product "${title}" not found in department`);
+          throw new NotFoundException(`Product "${newRaw.title}" not found in department`);
         }
         if (product.quantity < newRaw.quantity) {
-          throw new BadRequestException(`Insufficient stock for "${title}"`);
+          throw new BadRequestException(`Insufficient stock for "${newRaw.title}"`);
         }
 
-        console.log(product.quantity, newRaw.quantity)
         product.quantity -= newRaw.quantity;
         product.cost = product.quantity * product.unitCost
       }
@@ -105,7 +103,6 @@ export class WorkInProgressService {
       const parsedFilter = JSON.parse(filter);
       const parsedSort = JSON.parse(sort);
 
-      console.log({ ...parsedFilter, location: req.user.location }, select)
       if (query.startDate && query.endDate) {
         const startDate = new Date(query.startDate);
         startDate.setHours(0, 0, 0, 0); // Start of the startDate
@@ -149,7 +146,6 @@ export class WorkInProgressService {
   }
   async remove(id: string) {
     try {
-      console.log(id)
       return this.workInProgress.findByIdAndDelete(id)
     } catch (error) {
       errorLog(`Error remove one  charge: ${error}`, "ERROR")

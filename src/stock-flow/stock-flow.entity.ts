@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from 'mongoose';
-export type StockTrackerDocument = StockTracker & Document;
+export type StockFlowDocument = StockFlow & Document;
 
 @Schema({
     timestamps: {
@@ -12,35 +12,27 @@ export type StockTrackerDocument = StockTracker & Document;
         }
     }
 })
-export class StockTracker {
+export class StockFlow {
     @Prop({ required: true, type: String })
     title: string;
 
     @Prop({ required: true, type: String })
-    paymentFor: string;
+    product: string;
 
     @Prop({ default: 0, type: Number })
-    cash: number;
+    quantity: number;
 
-    @Prop({ default: 0, type: Number })
-    bank: number;
+    @Prop({ type: Types.ObjectId, ref: 'Department', required: true })
+    stockFrom: Types.ObjectId;
 
-    @Prop()
-    initiator: string;
-    @Prop()
-    location: string;
+    @Prop({ type: Types.ObjectId, ref: 'Department', required: true })
+    stockTo: string;
 
-    @Prop({ type: String })
-    moneyFrom: string;
-
-    @Prop({ required: true, type: String, enum: ['in', 'out'] })
+    @Prop({ required: true, type: String, enum: ['in', 'out', 'contra'] })
     type: string;
 
     @Prop({ default: 0, type: Number })
-    CashBalanceAfter: number;
-
-    @Prop({ default: 0, type: Number })
-    BankBalanceAfter: number
+    stockBalanceAfter: number;
 
     @Prop({
         required: true,
@@ -51,7 +43,12 @@ export class StockTracker {
         }
     })
     transactionDate: Date;
+
+    @Prop({ required: true })
+    initiator: string;
+
+    @Prop({ required: true })
+    location: string;
 }
 
-export const StockTrackerSchema = SchemaFactory.createForClass(StockTracker);
-
+export const StockFlowSchema = SchemaFactory.createForClass(StockFlow);

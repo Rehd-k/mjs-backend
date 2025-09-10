@@ -8,6 +8,7 @@ import { QueryDto } from 'src/product/query.dto';
 import { errorLog } from 'src/helpers/do_loggers';
 import { Department } from 'src/department/entities/department.entity';
 import { CashflowService } from 'src/cashflow/cashflow.service';
+import { StockFlowService } from 'src/stock-flow/stock-flow.service';
 
 
 // Remeber to handle for returns outwards
@@ -19,6 +20,8 @@ export class PurchasesService {
         private supplierService: SupplierService,
         @Inject(forwardRef(() => ProductService)) private productService: ProductService,
         @InjectModel(Department.name) private departmentModel: Model<Department>,
+        private readonly stockFlowService: StockFlowService,
+
         private cashflowService: CashflowService
     ) { }
 
@@ -45,20 +48,11 @@ export class PurchasesService {
                     return res.productId.toString() == product._id
                 })
 
-
                 if (departmentProduct == -1) {
-
-
                     mainDepartment.finishedGoods.push(
                         {
-                            title: product.title,
                             productId: new mongoose.Types.ObjectId(product._id as string),
-                            quantity: Number(createdPurchase.quantity),
-                            price: Number(product.price),
-                            type: product.type,
-                            servingSize: product.cartonAmount,
-                            servingPrice: product.cartonPrice,
-                            sellUnits: product.sellUnits
+                            quantity: Number(createdPurchase.quantity)
                         }
                     )
                 } else {
@@ -66,6 +60,8 @@ export class PurchasesService {
                 }
 
                 await Promise.all([mainDepartment.save(), product.save()]);
+                await this.stockFlowService.create('Purchases', product.title, Number(createdPurchase.quantity), 'Supplier', mainDepartment._id, 'in', new Date(Date.now()), req.user.username, req.user.location)
+
             }
             const order = await createdPurchase.save();
             if (createdPurchase.supplier) {
@@ -370,33 +366,62 @@ export class PurchasesService {
 
     }
 
-    async doDamagedGood(id: string, updatePurchaseDto: any) {
+    async doDamagedGood(id: string, updatePurchaseDto: any, req: any) {
         const product = await this.productService.findOne(updatePurchaseDto.productId);
         const purchace = await this.purchaseModel.findById(id);
-        if (!product || !purchace) {
+        const department = await this.departmentModel.findOne({ _id: updatePurchaseDto.from })
+        if (!product || !purchace || !department) {
             throw new BadRequestException('Not found');
         }
+        const departmentProduct = department.finishedGoods.findIndex((res) => {
+            return res.productId.toString() == product._id
+        })
+        if (departmentProduct == -1) {
+            throw new BadRequestException("Product Dosn't Exist in this Department");
+        } else {
+            if (department.finishedGoods[departmentProduct].quantity >= Number(updatePurchaseDto.quantity)) {
+                department.finishedGoods[departmentProduct].quantity = department.finishedGoods[departmentProduct].quantity - Number(updatePurchaseDto.quantity)
+            } else {
+                throw new BadRequestException("Not Enough Product TO Be Returned");
+            }
+        }
         product.quantity = product.quantity - Number(updatePurchaseDto.quantity);
-
         purchace.quantity = purchace.quantity - Number(updatePurchaseDto.quantity);
+
 
         delete updatePurchaseDto.productId;
         delete updatePurchaseDto._id;
         purchace.damagedGoods.push(updatePurchaseDto);
         const result = await Promise.all([
             product.save(),
-            purchace.save()
+            purchace.save(),
+            department.save()
         ]);
+        await this.stockFlowService.create('Damaged Goods', product.title, Number(updatePurchaseDto.quantity), department._id, 'Damages', 'out', new Date(Date.now()), req.user.username, req.user.location)
         return result;
     }
 
-    async doReturns(id: string, updatePurchaseDto: any) {
+    async doReturns(id: string, updatePurchaseDto: any, req: any) {
         const product = await this.productService.findOne(updatePurchaseDto.productId);
         const purchace = await this.purchaseModel.findById(id);
-        if (!product || !purchace) {
+        const department = await this.departmentModel.findOne({ _id: updatePurchaseDto.from })
+        if (!product || !purchace || !department) {
             throw new BadRequestException('Not found');
         }
 
+        const departmentProduct = department.finishedGoods.findIndex((res) => {
+            return res.productId.toString() == product._id
+        })
+
+        if (departmentProduct == -1) {
+            throw new BadRequestException("Product Dosn't Exist in this Department");
+        } else {
+            if (department.finishedGoods[departmentProduct].quantity >= Number(updatePurchaseDto.quantity)) {
+                department.finishedGoods[departmentProduct].quantity = department.finishedGoods[departmentProduct].quantity - Number(updatePurchaseDto.quantity)
+            } else {
+                throw new BadRequestException("Not Enough Product TO Be Returned");
+            }
+        }
         product.quantity = product.quantity - Number(updatePurchaseDto.quantity);
         purchace.quantity = purchace.quantity - Number(updatePurchaseDto.quantity);
 
@@ -405,12 +430,14 @@ export class PurchasesService {
         purchace.returns.push(updatePurchaseDto);
         const result = await Promise.all([
             product.save(),
-            purchace.save()
+            purchace.save(),
+            department.save()
         ]);
+        await this.stockFlowService.create('Returns Outward', product.title, Number(updatePurchaseDto.quantity), department._id, 'Supplier', 'out', new Date(Date.now()), req.user.username, req.user.location)
         return result;
     }
 
-    async update(id: string, updatePurchaseDto: any) {
+    async update(id: string, updatePurchaseDto: any, req: any) {
         try {
             const purchase = await this.purchaseModel.findById(id);
             if (!purchase) {
@@ -439,21 +466,16 @@ export class PurchasesService {
                         departmentProduct.quantity = departmentProduct.quantity + Number(purchase.quantity);
                     } else {
                         mainDepartment.finishedGoods.push({
-                            title: product.title,
                             productId: new mongoose.Types.ObjectId(product._id as string),
-                            quantity: Number(purchase.quantity),
-                            price: product.price,
-                            type: product.type,
-                            servingSize: product.cartonAmount,
-                            servingPrice: product.cartonPrice,
-                            sellUnits: product.sellUnits
+                            quantity: Number(purchase.quantity)
                         });
                     }
 
                     await mainDepartment.save();
                     await product.save();
-                }
+                    await this.stockFlowService.create('Purchases', product.title, Number(updatePurchaseDto.quantity), 'Supplier', mainDepartment._id, 'in', new Date(Date.now()), req.user.username, req.user.location)
 
+                }
                 if (key === 'status' && value === 'Not Delivered') {
                     const product = await this.productService.findOne(purchase.productId.toString());
                     if (!product) {
@@ -461,7 +483,7 @@ export class PurchasesService {
                     }
 
                     product.quantity = product.quantity - Number(purchase.quantity);
-                    const mainDepartment = await this.departmentModel.findOne({ title: 'main department' });
+                    const mainDepartment = await this.departmentModel.findById(updatePurchaseDto.departmentId);
 
                     if (!mainDepartment) {
                         throw new Error('No Main Department in Facility, Please Create A Main Department And Try Again');
@@ -479,7 +501,6 @@ export class PurchasesService {
                     await product.save();
                 }
             }
-
             return await purchase.save();
         } catch (error) {
             errorLog(`updating one purchases error ${error}`, "ERROR")

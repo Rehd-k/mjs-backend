@@ -16,6 +16,15 @@ export class DepartmentHistortyController {
         return this.departmentHistoryService.createHistory(createDepartmentDto, req);
     }
 
+    @Get('approve/:id/:section')
+    async pproveHistory(
+        @Req() req: any,
+        @Param('id') id: string,
+        @Param('section') section: string
+    ) {
+        return this.departmentHistoryService.handleAprove(id, req, section)
+    }
+
     @Get()
     async findAll(
         @Req() req: any,

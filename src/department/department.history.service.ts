@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Body, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { DepartmentHistory } from "./entities/department.history.entity";
 import { Model } from "mongoose";
@@ -6,9 +6,12 @@ import { errorLog } from "src/helpers/do_loggers";
 import { QueryDto } from "src/product/query.dto";
 import { DepartmentService } from "./department.service";
 
+
 @Injectable()
 export class DepartmentHistoryService {
-  constructor(@InjectModel(DepartmentHistory.name) private storeHistoryModel: Model<DepartmentHistory>, private readonly storeService: DepartmentService) { }
+  constructor(
+    @InjectModel(DepartmentHistory.name) private storeHistoryModel: Model<DepartmentHistory>,
+    private readonly storeService: DepartmentService) { }
 
   async createHistory(newHistory: any, req: any) {
     try {
@@ -20,6 +23,42 @@ export class DepartmentHistoryService {
       errorLog(`Error creating this history: ${error}`, "ERROR")
       throw new Error(`Error creating one store history: ${error.message}`);
     }
+  }
+
+  async handleAprove(id: string, req: any, section) {
+
+    try {
+      let products: any = [];
+      const history = await this.storeHistoryModel.findById(id).populate({
+        path: `products.product`, // 👈 nested path populate
+        model: `${section == 'RawGoods' ? 'RawMaterial' : 'Product'}`,
+        select: 'title price cost unitCost',
+      });
+      if (history) {
+        for (const element of history!.products) {
+          let item = {
+            productId: element.product,
+            toSend: element.quantity
+          }
+          products.push(item as any)
+        }
+        history.closer = req.user.username
+        this.storeService.sendOrReceiveStock(
+          history.fromId.toString(),
+          history.toId.toString(),
+          history.section,
+          products,
+          req,
+          false
+        )
+        await history.save()
+      }
+      return history
+    } catch (error) {
+      errorLog(`Error Approveing this Request ${error}`, "ERROR")
+      throw new BadRequestException(error);
+    }
+
   }
 
   async findAll(req: any, query: QueryDto) {
@@ -60,7 +99,7 @@ export class DepartmentHistoryService {
       // ✅ Merge all filters
       const mongoFilter = {
         ...parsedFilter,
-        createdAt: { $gte: start, $lte: end },
+        // createdAt: { $gte: start, $lte: end },
         location: req.user.location,
       };
       const projection = select
@@ -70,7 +109,6 @@ export class DepartmentHistoryService {
         }, {})
         : {};
 
-
       const pipeline: any[] = [
         { $match: mongoFilter },
         {
@@ -79,21 +117,107 @@ export class DepartmentHistoryService {
               { $sort: parsedSort },
               { $skip: Number(skip) },
               { $limit: Number(limit) },
-              ...(Object.keys(projection).length ? [{ $project: projection }] : [])
+
+              // 👇 First lookup into products
+              {
+                $lookup: {
+                  from: "products",
+                  let: { products: "$products" },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: { $in: ["$_id", "$$products.product"] }
+                      }
+                    },
+                    { $project: { title: 1 } }
+                  ],
+                  as: "productsLookup"
+                }
+              },
+
+              // 👇 Second lookup into rawmaterials
+              {
+                $lookup: {
+                  from: "rawmaterials",
+                  let: { products: "$products" },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: { $in: ["$_id", "$$products.product"] }
+                      }
+                    },
+                    { $project: { title: 1 } }
+                  ],
+                  as: "rawMaterialsLookup"
+                }
+              },
+
+              // 👇 Pick the correct populated array based on section
+              {
+                $addFields: {
+                  populatedProducts: {
+                    $cond: [
+                      { $eq: ["$section", "finishedGoods"] },
+                      "$productsLookup",
+                      "$rawMaterialsLookup"
+                    ]
+                  }
+                }
+              },
+
+              // 👇 Map products array with matched titles
+              {
+                $addFields: {
+                  products: {
+                    $map: {
+                      input: "$products",
+                      as: "prod",
+                      in: {
+                        quantity: "$$prod.quantity",
+                        product: {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: "$populatedProducts",
+                                cond: { $eq: ["$$this._id", "$$prod.product"] }
+                              }
+                            },
+                            0
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+
+              // 👇 Remove temporary fields
+              {
+                $project: {
+                  populatedProducts: 0,
+                  productsLookup: 0,
+                  rawMaterialsLookup: 0,
+                  ...(Object.keys(projection).length ? projection : {})
+                }
+              }
             ],
-            totalCount: [{ $count: 'count' }]
+            totalCount: [{ $count: "count" }]
           }
         },
         {
           $project: {
-            history: '$data',
-            totalDocuments: { $ifNull: [{ $arrayElemAt: ['$totalCount.count', 0] }, 0] }
+            history: "$data",
+            totalDocuments: {
+              $ifNull: [{ $arrayElemAt: ["$totalCount.count", 0] }, 0]
+            }
           }
         }
+
       ];
 
       const result = await this.storeHistoryModel.aggregate(pipeline).exec();
       return result[0] || { history: [], totalDocuments: 0 };
+
 
     } catch (error) {
       errorLog(`Error getting all store: ${error}`, "ERROR")

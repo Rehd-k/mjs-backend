@@ -1,10 +1,12 @@
-import { Injectable, BadRequestException, forwardRef, Inject, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, forwardRef, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Product } from './product.schema';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { PurchasesService } from 'src/purchases/purchases.service';
 import { SalesService } from 'src/sales/sales.service';
+import { Department } from 'src/department/entities/department.entity';
+import { StockFlowService } from 'src/stock-flow/stock-flow.service';
 
 @Injectable()
 export class InventoryService {
@@ -12,7 +14,9 @@ export class InventoryService {
         @InjectModel('Product') private readonly productModel: Model<Product>,
         private readonly notificationService: NotificationsService,
         @Inject(forwardRef(() => PurchasesService)) private readonly purchasesService: PurchasesService,
-        @Inject(forwardRef(() => SalesService)) private readonly saleService: SalesService
+        // @Inject(forwardRef(() => SalesService)) private readonly saleService: SalesService,
+        @InjectModel(Department.name) private departmentModel: Model<Department>,
+        private readonly stockFlowService: StockFlowService,
     ) { }
 
     async restockProduct(productId: string, quantity: number): Promise<any> {
@@ -50,24 +54,34 @@ export class InventoryService {
         await product.save();
     }
 
-    async deductStock(productId: string, quantity: number, req: any): Promise<any> {
+    async deductStock(productId: string, quantity: number, req: any, departmentId: string, reason: string, to: string): Promise<any> {
         const product = await this.productModel.findById(productId);
-        if (!product) {
-            throw new BadRequestException('Product not found');
-        }
+        const department = await this.departmentModel.findById(departmentId)
 
+        if (!department || !product) {
+            throw new BadRequestException("Invalid request, Product or Department Dossnt exist");
+        }
+        const senderProducts = new Map(
+            department.finishedGoods.map((p) => [p.productId.toString(), p])
+        );
+        const sendingProduct = senderProducts.get(productId.toString());
+
+        if (!sendingProduct) {
+            throw new NotFoundException(
+                `Product "${product.title}" not found in sender's department`
+            );
+        }
+        sendingProduct.quantity -= quantity;
         if (product.quantity < quantity) {
             throw new BadRequestException('Insufficient stock');
         }
-
         product.quantity -= quantity;
-
         // Check for low stock
         if (product.quantity <= product.roq) {
             await this.notifyAdminLowStock(product, req);
         }
-
-        return product.save();
+        await this.stockFlowService.create(reason, product.title, quantity, department._id, to, 'out', new Date(Date.now()), req.user.username, req.user.location)
+        return Promise.all([department.save(), product.save()]);
     }
 
     private async notifyAdminLowStock(product: any, req: any): Promise<void> {

@@ -29,6 +29,9 @@ class CartProduct {
     @Prop()
     price: number;
 
+    @Prop()
+    from: string;
+
     @Prop([
         {
             quantity: Number,

@@ -2,17 +2,11 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import mongoose, { Types } from "mongoose";
 
 class Product {
-    @Prop()
-    title: string;
-
     @Prop({ type: { type: mongoose.Types.ObjectId }, ref: 'Product' })
-    productId: Types.ObjectId;
+    product: Types.ObjectId;
 
     @Prop()
     quantity: number;
-
-    @Prop({ required: true, min: 0 })
-    price: number;
 }
 
 
@@ -41,13 +35,14 @@ export class DepartmentHistory {
 
     @Prop({
         type: [{
-            title: String,
             product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
             quantity: Number,
-            price: Number,
         }]
     })
     products: Product[];
+
+    @Prop()
+    section : string;
 
     @Prop()
     location: string;

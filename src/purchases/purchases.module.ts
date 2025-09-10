@@ -7,14 +7,15 @@ import { SupplierModule } from 'src/supplier/supplier.module';
 import { ProductModule } from 'src/product/product.module';
 import { DepartmentModule } from 'src/department/department.module';
 import { CashflowModule } from 'src/cashflow/cashflow.module';
+import { StockFlowModule } from 'src/stock-flow/stock-flow.module';
 
 @Module({
   imports: [
     DepartmentModule,
     CashflowModule,
-       SupplierModule,
+    SupplierModule,
     MongooseModule.forFeature([{ name: Purchase.name, schema: PurchaseSchema }]),
- 
+    StockFlowModule,
     forwardRef(() => ProductModule)
   ],
   providers: [PurchasesService],

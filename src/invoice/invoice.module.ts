@@ -7,6 +7,8 @@ import { ActivityModule } from 'src/activity/activity.module';
 import { DepartmentModule } from 'src/department/department.module';
 import { ProductModule } from 'src/product/product.module';
 import { CustomerModule } from 'src/customer/customer.module';
+import { StockFlowModule } from 'src/stock-flow/stock-flow.module';
+import { CashflowModule } from 'src/cashflow/cashflow.module';
 
 @Module({
   imports: [
@@ -14,7 +16,9 @@ import { CustomerModule } from 'src/customer/customer.module';
     ActivityModule,
     DepartmentModule,
     ProductModule,
-    CustomerModule
+    CustomerModule,
+    CashflowModule,
+    StockFlowModule
   ],
   controllers: [InvoiceController],
   providers: [InvoiceService],

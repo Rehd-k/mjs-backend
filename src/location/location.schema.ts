@@ -15,15 +15,12 @@ export type LocationDocument = Location & Document;
 })
 export class Location extends Document {
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })
-    firm_name: string;
-
-    @Prop({ required: true, set: (title: string) => title.toLowerCase() })
     name: string;
 
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })
     location: string;
 
-    @Prop({ type: String, required: true })
+    @Prop({ type: String })
     manager: string;
 
     @Prop()

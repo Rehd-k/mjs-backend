@@ -18,6 +18,9 @@ export class ReqisitionProduct {
     @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
     productId: Types.ObjectId;
 
+    @Prop({ type: String, required: true })
+    product_title: string;
+
     @Prop({ default: 0, required: true })
     quantity: number;
 
@@ -45,7 +48,13 @@ export class Reqisition {
     initiator: string;
 
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })
-    type: string
+    from: string
+
+    @Prop({ type: Boolean, default: false })
+    approved: boolean
+
+    @Prop({ type: Number, default: 0 })
+    totalCost: number
 
     @Prop()
     location: string;

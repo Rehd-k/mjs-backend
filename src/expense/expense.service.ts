@@ -12,7 +12,8 @@ export class ExpensesService {
 
     async createExpense(body: any, req: any) {
         try {
-            body.createdBy = req.user.username
+            body.date = new Date(body.date)
+            body.initiator = req.user.username
             body.location = req.user.location;
             return await this.expenseModel.create(body);
         } catch (error) {
@@ -77,13 +78,22 @@ export class ExpensesService {
             end.setHours(24, 59, 59, 999);
 
             parsedFilter.createdAt = { $gte: start, $lte: end };
-
-            return await this.expenseModel.find({ ...parsedFilter, location: req.user.location })
+            console.log(parsedFilter.approved)
+            if (parsedFilter.approved == '') {
+                delete parsedFilter.approved
+            }
+            if (parsedFilter.category == 'category' || parsedFilter.category == 'All') {
+                delete parsedFilter.category
+            }
+            const dbExpenses = await this.expenseModel.find({ ...parsedFilter, location: req.user.location })
                 .sort(parsedSort)
                 .skip(Number(skip))
                 .limit(Number(limit))
                 .select(select)
                 .exec()
+            const expensesCount = await this.expenseModel.countDocuments({ ...parsedFilter, location: req.user.location })
+            const result = { expense: dbExpenses, expensesCount: expensesCount }
+            return result;
         } catch (error) {
             errorLog(`error reading all expenses ${error}`, "ERROR")
             throw new BadRequestException(error);

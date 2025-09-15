@@ -2,7 +2,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-export type ExpensesDocument = Expenses & Document;
+export type ExpensesCategoryDocument = ExpensesCategory & Document;
 
 @Schema({
     timestamps: {
@@ -14,27 +14,18 @@ export type ExpensesDocument = Expenses & Document;
         }
     }
 })
-export class Expenses extends Document {
-    @Prop({ type: String, required: true })
-    category: string;
-
+export class ExpensesCategory extends Document {
     @Prop({ type: String, set: (title: string) => title.toLowerCase() })
-    description: string;
-
-    @Prop({ type: Number, required: true })
-    amount: number;
-
-    @Prop({ type: Boolean, required: true, default: false })
-    approved: boolean;
-
-    @Prop({ type: Date, required: true, default: new Date(Date.now() + 60 * 60 * 1000) })
-    date: Date
+    title: string;
 
     @Prop({ type: String, required: true })
+    icon: String;
+
+    @Prop({ type: String, required: true, set: (title: string) => title.toLowerCase() })
     initiator: string;
 
     @Prop({ required: true, type: String })
     location: string;
 }
 
-export const ExpensesSchema = SchemaFactory.createForClass(Expenses);
+export const ExpensesCategorySchema = SchemaFactory.createForClass(ExpensesCategory);

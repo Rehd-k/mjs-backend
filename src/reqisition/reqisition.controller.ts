@@ -1,11 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, Query } from '@nestjs/common';
 import { ReqisitionService } from './reqisition.service';
 
 import { Role } from 'src/helpers/enums';
 import { Roles } from 'src/helpers/roles/roles.decorator';
 import { CreateReqisitionDto } from './dto/create-reqisition.dto';
 import { UpdateReqisitionDto } from './dto/update-reqisition.dto';
+import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
+import { RolesGuard } from 'src/helpers/roles/roles.guard';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('reqisition')
 @Roles(Role.God, Role.Admin, Role.Manager)
 export class ReqisitionController {
@@ -24,10 +27,11 @@ export class ReqisitionController {
 
   @Get()
   findAll(
-    @Req() req: any
+    @Req() req: any,
+    @Query() query: any
   ) {
     try {
-      return this.reqisitionService.findAll(req);
+      return this.reqisitionService.findAll(req, query);
     } catch (error) {
 
       throw new Error(`Error getting reqisitions, ${error}`);

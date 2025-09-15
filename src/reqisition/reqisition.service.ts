@@ -8,7 +8,7 @@ import { Model } from 'mongoose';
 
 @Injectable()
 export class ReqisitionService {
- constructor(
+  constructor(
     @InjectModel(Reqisition.name) private readonly reqisitionModel: Model<Reqisition>
   ) { }
   async create(createReqisitionDto: any, req: any) {
@@ -24,9 +24,36 @@ export class ReqisitionService {
 
   }
 
-  async findAll(req: any) {
+  async findAll(req: any, query: any) {
+    const {
+      filter = '{}',
+      sort = '{}',
+      skip = 0,
+      select = '',
+      limit = 10,
+      startDate,
+      endDate,
+      selectedDateField,
+    } = query;
+    const parsedFilter = JSON.parse(filter);
+    const parsedSort = JSON.parse(sort);
+
     try {
-      const reqisitions = await this.reqisitionModel.find({ location: req.user.location })
+      if (startDate && endDate && selectedDateField) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        parsedFilter[selectedDateField] = { $gte: start, $lte: end };
+      }
+      const reqisitions = await this.reqisitionModel
+        .find({ ...parsedFilter, location: req.user.location })
+        .sort(parsedSort)
+        .limit(Number(limit))
+        .skip(Number(skip))
+        .select(select)
+        .exec()
+      console.log(reqisitions)
       return reqisitions;
     } catch (error) {
       errorLog(`Error geting all  reqisition: ${error}`, "ERROR")

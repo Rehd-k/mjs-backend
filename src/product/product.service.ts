@@ -19,7 +19,7 @@ export class ProductService {
             return await createdProduct.save();
         } catch (error) {
             errorLog(`Error createing objects ${error}`, "ERROR")
-            throw new BadRequestException(error); 
+            throw new BadRequestException(error);
         }
 
     }
@@ -36,7 +36,15 @@ export class ProductService {
         } = query;
         const parsedFilter = JSON.parse(filter);
         const parsedSort = JSON.parse(sort);
-    
+
+        if (parsedFilter.filter == 'no stock') {
+            parsedFilter.quantity = 0;
+            delete parsedFilter.filter
+        } else if (parsedFilter.filter == 'low stock') {
+            parsedFilter.lowStock = true;
+            delete parsedFilter.filter
+        }
+
         // If the filter contains a 'barcode' key, set skip to 0
         if (parsedFilter && typeof parsedFilter === 'object' && 'barcode' in parsedFilter) {
             query.skip = 0;

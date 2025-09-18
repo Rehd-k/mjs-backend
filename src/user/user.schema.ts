@@ -14,6 +14,12 @@ export type UserDocument = User & Document;
     }
 })
 export class User {
+    @Prop()
+    profile_Photo: string;
+
+    @Prop()
+    documentation_media: string[];
+
     @Prop({ required: true })
     firstName: string;
 
@@ -23,10 +29,49 @@ export class User {
     @Prop({ required: true, unique: true })
     username: string;
 
+    @Prop({ unique: true })
+    email: string;
+
+    @Prop()
+    address: string;
+
+    @Prop()
+    gender: string;
+
+    @Prop()
+    DoB: Date;
+
+    @Prop()
+    nationality: string;
+
+    @Prop()
+    marital_status: string;
+
+    @Prop()
+    job_title: string;
+
+    @Prop()
+    department: string;
+
+    @Prop()
+    start_date: Date;
+
+    @Prop()
+    employment_type: string;
+
+    @Prop()
+    reporting_manager: string;
+
+    @Prop()
+    shift_schedule: String;
+
+    @Prop()
+    salary: number;
+
     @Prop({ required: true, minlength: 6 })
     password: string;
 
-    @Prop({ required: true, enum: ['admin', 'manager', 'cashier', 'staff', 'god'], default: 'staff' })
+    @Prop({ required: true, enum: ['admin', 'manager', 'cashier', 'staff', 'god', 'waiter', 'bar', 'supervisor'], default: 'staff' })
     role: string;
 
     @Prop({ required: true })

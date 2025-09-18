@@ -1,12 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { RolesGuard } from 'src/helpers/role/roles.guard';
 import { UserService } from './user.service';
 import { Role } from 'src/helpers/enums';
 import { Roles } from 'src/helpers/role/roles.decorator';
 import { QueryDto } from 'src/product/query.dto';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { multerConfig } from 'src/helpers/multer.config';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+
 @Controller('user')
 export class UserController {
     constructor(private userService: UserService) { }
@@ -17,7 +19,7 @@ export class UserController {
         return this.userService.create(body)
     }
 
-
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.God, Role.Admin, Role.Manager)
     @Get()
     async getAllUsers(
@@ -27,25 +29,39 @@ export class UserController {
         return await this.userService.getAllUsers(query, req);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
     @Get(':username')
     async findOneByUsername(@Param('username') username: string) {
         return this.userService.findOneByUsername(username);
     }
 
-
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
     @Get(':id')
     async getOneById(@Param('id') id: string) {
         return this.userService.getOneById(id);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.God, Role.Admin)
     @Put(':id')
     async updateOneById(@Param('id') id: string, @Body() user: any) {
         return this.userService.updateOneById(id, user);
     }
 
+    @Post('multiple/:id')
+    @UseInterceptors(FilesInterceptor('files', 10, multerConfig))
+    uploadMultiple(@UploadedFiles() files: Array<Express.Multer.File>, @Param() id : string) {
+        console.log(files)
+         files.map(file => ({
+            filename: file.originalname,
+            size: file.size,
+            path: file.path,
+        }));
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.God, Role.Admin)
     @Delete(':id')
     async deleteOneById(@Param('id') id: string) {

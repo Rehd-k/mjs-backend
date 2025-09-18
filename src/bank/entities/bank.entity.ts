@@ -20,7 +20,7 @@ export class Bank {
     @Prop({ required: true, unique: true })
     accountNumber: string;
 
-    @Prop({ required: true, unique: true })
+    @Prop({ required: true, })
     accountName: string;
 
     @Prop({ default: true })
@@ -29,10 +29,13 @@ export class Bank {
     @Prop({ default: 0 })
     balance: number;
 
-    @Prop({ type: Types.ObjectId, ref: 'InwardPayment', required: true })
+    @Prop({ type: [String] })
+    access: string[]
+
+    @Prop({ type: Types.ObjectId, ref: 'InwardPayment' })
     inward: Types.ObjectId;
 
-    @Prop({ type: Types.ObjectId, ref: 'OutwardPayment', required: true })
+    @Prop({ type: Types.ObjectId, ref: 'OutwardPayment' })
     outward: Types.ObjectId;
 
     @Prop({ required: true, type: String })

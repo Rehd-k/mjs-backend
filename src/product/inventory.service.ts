@@ -26,6 +26,8 @@ export class InventoryService {
         }
 
         product.quantity += quantity;
+
+        product.lowStock = product.quantity <= product.roq;
         return await product.save();
     }
 
@@ -36,6 +38,8 @@ export class InventoryService {
         }
 
         product.sold += quantity;
+
+        product.lowStock = (product.quantity - product.sold) <= product.roq;
         await product.save();
     }
 
@@ -50,7 +54,7 @@ export class InventoryService {
         }
 
         product.sold -= quantity;
-
+        product.lowStock = (product.quantity - product.sold) <= product.roq;
         await product.save();
     }
 
@@ -77,6 +81,7 @@ export class InventoryService {
         }
         product.quantity -= quantity;
         // Check for low stock
+        product.lowStock = product.quantity <= product.roq;
         if (product.quantity <= product.roq) {
             await this.notifyAdminLowStock(product, req);
         }

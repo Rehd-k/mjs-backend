@@ -14,15 +14,13 @@ import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 export class ProductController {
     constructor(private readonly productService: ProductService, private readonly inventoryService: InventoryService) { }
 
-    @Roles(Role.God, Role.Admin, Role.Manager)
-    @Post(
-
-    )
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
+    @Post()
     async createProduct(@Body() productDto: any, @Req() req: any) {
         return this.productService.create(productDto, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor)
     @Get()
     async getAllProducts(
         @Query() query: QueryDto,
@@ -32,7 +30,7 @@ export class ProductController {
         return data;
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
     @Get('/dashboard/:id')
     async getDashboardData(
         @Param('id') id: string,
@@ -44,14 +42,14 @@ export class ProductController {
 
             return data;
         } catch (error) {
-            
+
             throw new InternalServerErrorException(error)
         }
 
 
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
     @Get('/findone/:id')
     async getProductById(@Param('id') productId: string) {
 
@@ -60,13 +58,13 @@ export class ProductController {
 
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
     @Put('/update/:id')
     async updateProduct(@Param('id') productId: Types.ObjectId, @Body() updateDto: any) {
         return this.productService.update(productId, updateDto);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
     @Delete('/delete/:id')
     async deleteProduct(@Param('id') productId: string) {
         return this.productService.remove(productId);

@@ -13,17 +13,19 @@ import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 export class SupplierController {
     constructor(private readonly supplierService: SupplierService) { }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
     @Post()
     async createSupplier(@Body() data: any, @Req() req: any) {
         return this.supplierService.createSupplier(data, req);
     }
 
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
     @Post(':id/orders')
     async addOrder(@Param('id') supplierId: Types.ObjectId, @Body() order: any) {
         return this.supplierService.addOrder(supplierId, order);
     }
 
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
     @Get()
     async getSuppliers(
         @Query() query: QueryDto,
@@ -33,6 +35,7 @@ export class SupplierController {
     }
 
 
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
     @Get(':id')
     async getSupplierDetails(@Param('id') supplierId: string) {
         return this.supplierService.getSupplierDetails(supplierId);

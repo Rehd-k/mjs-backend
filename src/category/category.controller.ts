@@ -11,13 +11,13 @@ import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 export class CategoryController {
     constructor(private readonly categoryService: CategoryService) { }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor)
     @Post()
     async createCategory(@Body() body: any, @Req() req: any) {
         return this.categoryService.createCategory(body, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor)
     @Get()
     async getCategorys(
         @Query() query: QueryDto,
@@ -31,19 +31,19 @@ export class CategoryController {
 
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor)
     @Get(':id')
     async getCategoryById(@Param('id') CategoryId: string) {
         return this.categoryService.getCategoryById(CategoryId);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor)
     @Put(':id')
     async updateCategoryById(@Param('id') CategoryId: string, @Body() updateDto: any) {
         return this.categoryService.update(CategoryId, updateDto);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor)
     @Delete(':id')
     async deleteProduct(@Param('id') CategoryId: string) {
         return this.categoryService.remove(CategoryId);

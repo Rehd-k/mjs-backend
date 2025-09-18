@@ -11,19 +11,20 @@ export class UserService {
     constructor(@InjectModel(User.name) private readonly userModel: Model<User>) { }
 
     async create(user: any) {
+        console.log(user)
         try {
             if (user.role === 'god')
                 user.initiator = 'god'
             return await this.userModel.create(user);
         } catch (error) {
-  
+            console.log(error);
             if (error && error.code === 11000) {
-                let errMessage = `User with username ${(error.errorResponse.keyValue.username)} already exists`;
+                let errMessage = `User with username / email already exists`;
                 errorLog(`${errMessage}`, "ERROR")
                 throw new BadRequestException(errMessage);
             }
             if (error && error.name === "ValidationError")
-                errorLog(`ValidationError`, "ERROR")
+                errorLog(`ValidationError ${error}`, "ERROR")
             throw new InternalServerErrorException(error.message);
         }
     }
@@ -32,13 +33,14 @@ export class UserService {
         try {
             return this.userModel.findOne({ username, location });
         } catch (error) {
-            errorLog(`error finding user by username${error}`, "ERROR")
+            errorLog(`error finding user by username ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
 
     }
 
     async getAllUsers(query: QueryDto, req) {
+        console.log(query, req.user)
         try {
             const {
                 filter = '{}',
@@ -57,7 +59,7 @@ export class UserService {
                 .select(select)
                 // .populate('location')
                 .exec()
- 
+
             return user;
         } catch (error) {
             errorLog(`error finding all users ${error}`, "ERROR")

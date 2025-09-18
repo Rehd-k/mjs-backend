@@ -37,6 +37,7 @@ export class PurchasesService {
             if (createdPurchase.status === 'Delivered') {
 
                 product.quantity = product.quantity + Number(createdPurchase.quantity);
+                product.lowStock = product.quantity <= product.roq;
 
                 const mainDepartment = await this.departmentModel.findOne({ _id: createdPurchase.dropOfLocation })
 
@@ -386,6 +387,7 @@ export class PurchasesService {
             }
         }
         product.quantity = product.quantity - Number(updatePurchaseDto.quantity);
+        product.lowStock = product.quantity <= product.roq;
         purchace.quantity = purchace.quantity - Number(updatePurchaseDto.quantity);
 
 
@@ -423,6 +425,7 @@ export class PurchasesService {
             }
         }
         product.quantity = product.quantity - Number(updatePurchaseDto.quantity);
+        product.lowStock = product.quantity <= product.roq;
         purchace.quantity = purchace.quantity - Number(updatePurchaseDto.quantity);
 
         delete updatePurchaseDto.productId;
@@ -454,6 +457,7 @@ export class PurchasesService {
                     }
 
                     product.quantity = product.quantity + Number(purchase.quantity);
+                    product.lowStock = product.quantity <= product.roq;
                     const mainDepartment = await this.departmentModel.findOne({ id: updatePurchaseDto.departmentId });
 
                     if (!mainDepartment) {
@@ -483,6 +487,7 @@ export class PurchasesService {
                     }
 
                     product.quantity = product.quantity - Number(purchase.quantity);
+                    product.lowStock = product.quantity <= product.roq;
                     const mainDepartment = await this.departmentModel.findById(updatePurchaseDto.departmentId);
 
                     if (!mainDepartment) {

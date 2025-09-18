@@ -24,7 +24,7 @@ export class ChargesController {
     }
 
   }
-
+  @Roles(Role.God, Role.Admin, Role.Manager, Role.Bar, Role.Waiter)
   @Get()
   findAll(
     @Req() req: any

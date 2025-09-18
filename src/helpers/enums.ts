@@ -4,4 +4,7 @@ export enum Role {
   Manager = 'manager',
   Cashier = 'cashier',
   Staff = 'staff',
+  Waiter = 'waiter',
+  Bar = 'bar',
+  Supervisor = 'supervisor'
 }

@@ -274,7 +274,7 @@ export class SalesService {
 
             parsedFilter.transactionDate = { $gte: startDate, $lte: endDate };
 
-            if (req.user.role === 'cashier' || req.user.role === 'staff') {
+            if (req.user.role === 'cashier' || req.user.role === 'staff' ||  req.user.role === 'waiter') {
                 parsedFilter.handler = req.user.username;
             }
 
@@ -532,6 +532,7 @@ export class SalesService {
     }
     // Remeber to send in department id, to cover for data.from instead of department id
     async return(id: string, data: any, req: any) {
+        console.log(data);
         try {
             if (!data.handler) {
                 for (const element of data.returns) {
@@ -591,6 +592,7 @@ export class SalesService {
 
             await sale.save();
             for (const element of data.returns) {
+        
                 const department = await this.departmentModel.findById(data.from)
 
                 if (!department) {

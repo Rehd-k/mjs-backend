@@ -41,7 +41,7 @@ export class Product extends Document {
     type: string;
 
     @Prop({ default: true })
-    sellUnits : boolean;
+    sellUnits: boolean;
 
     @Prop({ min: 0 })
     servingQuantity: number
@@ -73,6 +73,10 @@ export class Product extends Document {
     @Prop({ default: 0 })
     sold: number;
 
+
+    @Prop({ default: false, index: true }) // 🔹 Indexable for fast queries
+    lowStock: boolean;
+
     @Prop({ required: true, default: 0 })
     initiator: String
 
@@ -81,3 +85,8 @@ export class Product extends Document {
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
+
+ProductSchema.pre('save', function (next) {
+  this.lowStock = this.quantity <= this.roq;
+  next();
+});

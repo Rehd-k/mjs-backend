@@ -41,7 +41,7 @@ export class DepartmentService {
 
   async findAll(req: any, query: any) {
     try {
-      const department = await this.departmentModel.find({ ...query, location: req.user.location }).select('-products').exec()
+      const department = await this.departmentModel.find({ ...query, location: req.user.location }).select(' -finishedGoods -RawGoods ').exec()
       return department;
     } catch (error) {
       errorLog(`Error getting all department: ${error}`, "ERROR")

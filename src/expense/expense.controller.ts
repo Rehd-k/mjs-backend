@@ -9,7 +9,7 @@ import { ExpensesCategoryService } from './exp.cat.service';
 
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
 @Controller('expense')
 export class ExpensesController {
     constructor(private readonly expensesService: ExpensesService, private readonly expensesCategoryService: ExpensesCategoryService) { }

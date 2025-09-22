@@ -39,4 +39,8 @@ export class QueryDto {
   @IsOptional()
   @IsString()
   selectedDateField?: string; // Field to filter by date
+
+  @IsOptional()
+  @IsString()
+  quntfilter?: string;
 }

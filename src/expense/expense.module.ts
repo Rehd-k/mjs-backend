@@ -5,12 +5,14 @@ import { Expenses, ExpensesSchema } from './expenses.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ExpensesCategory, ExpensesCategorySchema } from './expenses.cat.schema';
 import { ExpensesCategoryService } from './exp.cat.service';
+import { CashflowModule } from 'src/cashflow/cashflow.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Expenses.name, schema: ExpensesSchema, },
-      { name: ExpensesCategory.name, schema: ExpensesCategorySchema }])
+      { name: ExpensesCategory.name, schema: ExpensesCategorySchema }]),
+      CashflowModule
   ],
   providers: [ExpensesService, ExpensesCategoryService],
   controllers: [ExpensesController],

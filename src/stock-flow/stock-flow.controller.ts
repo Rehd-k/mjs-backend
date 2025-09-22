@@ -10,7 +10,7 @@ import { QueryDto } from 'src/helpers/query.dto';
 
 @Controller('stock-flow')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Accounting)
 export class StockFlowController {
   constructor(private readonly stockFlowService: StockFlowService) { }
 

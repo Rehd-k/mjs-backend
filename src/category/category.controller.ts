@@ -6,6 +6,7 @@ import { QueryDto } from 'src/product/query.dto';
 import { RolesGuard } from 'src/helpers/role/roles.guard';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('category')
 export class CategoryController {
@@ -17,7 +18,7 @@ export class CategoryController {
         return this.categoryService.createCategory(body, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor, Role.Accounting)
     @Get()
     async getCategorys(
         @Query() query: QueryDto,

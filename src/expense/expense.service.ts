@@ -1,13 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, PipelineStage } from 'mongoose';
 import { Expenses } from './expenses.schema';
 import { QueryDto } from 'src/product/query.dto';
 import { errorLog } from 'src/helpers/do_loggers';
+import { CashflowService } from 'src/cashflow/cashflow.service';
 
 @Injectable()
 export class ExpensesService {
-    constructor(@InjectModel(Expenses.name) private readonly expenseModel: Model<Expenses>) { }
+    constructor(@InjectModel(Expenses.name) private readonly expenseModel: Model<Expenses>, private cashFlowService: CashflowService) { }
 
 
     async createExpense(body: any, req: any) {
@@ -15,7 +16,8 @@ export class ExpensesService {
             body.date = new Date(body.date)
             body.initiator = req.user.username
             body.location = req.user.location;
-            return await this.expenseModel.create(body);
+            const newExpenses = await this.expenseModel.create(body);
+            return newExpenses
         } catch (error) {
             errorLog(`error creating expenses ${error}`, "ERROR")
             throw new BadRequestException(error);
@@ -78,7 +80,6 @@ export class ExpensesService {
             end.setHours(24, 59, 59, 999);
 
             parsedFilter.createdAt = { $gte: start, $lte: end };
-            console.log(parsedFilter.approved)
             if (parsedFilter.approved == '') {
                 delete parsedFilter.approved
             }
@@ -103,35 +104,238 @@ export class ExpensesService {
     async getTotalExpenses(query: QueryDto, req: any) {
         try {
             const {
-                filter = '{}',
-                sort = '{}',
-                skip = 0,
-                select = '',
-                limit = 10,
                 startDate,
                 endDate
             } = query;
-            const parsedFilter = JSON.parse(filter);
-            const parsedSort = JSON.parse(sort);
 
             if (!startDate || !endDate) {
                 throw new BadRequestException(`Start date and end date are required`);
             }
 
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0); // Start of the startDate
+            // 1. Establish the precise date ranges needed for the queries.
+            // For the user-defined range, we use the very start of the startDate
+            // and the absolute end of the endDate to be inclusive.
+            const startOfDay = new Date(startDate);
+            startOfDay.setHours(0, 0, 0, 0);
 
-            const end = new Date(endDate);
-            end.setHours(24, 59, 59, 999);
-            const result = await this.expenseModel.aggregate([
-                { $match: { createdAt: { $gte: start, $lte: end }, ...parsedFilter, location: req.user.location } },
-                { $group: { _id: null, total: { $sum: '$amount' } } },
-            ]);
-            return result[0]?.total || 0;
+            const endOfDay = new Date(endDate);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            // For the monthly total, we calculate the start of the first day
+            // and the end of the last day of the month derived from the startDate.
+            const firstDayOfMonth = new Date(startOfDay.getFullYear(), startOfDay.getMonth(), 1);
+            const lastDayOfMonth = new Date(startOfDay.getFullYear(), startOfDay.getMonth() + 1, 0);
+            lastDayOfMonth.setHours(23, 59, 59, 999);
+
+
+            const pipeline: PipelineStage[] = [
+                // 2. Use the $facet stage to run multiple independent aggregation pipelines
+                // on the same collection without needing to query the database multiple times.
+                {
+                    $facet: {
+                        // Pipeline (A): Calculates stats for the specific date range provided.
+                        dateRangeStats: [
+                            {
+                                $match: {
+                                    date: { $gte: startOfDay, $lte: endOfDay },
+                                    location: req.user.location
+
+                                }
+                            },
+                            {
+                                $group: {
+                                    _id: null, // Group all matched documents into a single result
+                                    totalAmount: { $sum: '$amount' },
+                                    approvedAmount: {
+                                        // Only add to the sum if the 'approved' field is true
+                                        $sum: { $cond: ['$approved', '$amount', 0] }
+                                    },
+                                    unapprovedAmount: {
+                                        // Only add to the sum if the 'approved' field is false
+                                        $sum: { $cond: [{ $eq: ['$approved', false] }, '$amount', 0] }
+                                    },
+                                    documentCount: { $sum: 1 } // Count the documents
+                                }
+                            }
+                        ],
+                        // Pipeline (B): Finds the category with the highest spending in the date range.
+                        highestSpendingCategory: [
+                            {
+                                $match: {
+                                    date: { $gte: startOfDay, $lte: endOfDay },
+                                    location: req.user.location
+                                }
+                            },
+                            {
+                                $group: {
+                                    _id: '$category', // Group documents by category
+                                    totalSpent: { $sum: '$amount' }
+                                }
+                            },
+                            { $sort: { totalSpent: -1 } }, // Sort by the most spent
+                            { $limit: 1 } // Take only the top one
+                        ],
+                        // Pipeline (C): Calculates the total expenses for the entire current month.
+                        monthlyTotal: [
+                            {
+                                $match: {
+                                    date: { $gte: firstDayOfMonth, $lte: lastDayOfMonth },
+                                    location: req.user.location
+                                }
+                            },
+                            {
+                                $group: {
+                                    _id: null,
+                                    total: { $sum: '$amount' }
+                                }
+                            }
+                        ],
+                        // Pipeline (D): Gets the 10 most recent transactions in the date range.
+                        latestTransactions: [
+                            {
+                                $match: {
+                                    location: req.user.location
+                                    // date: { $gte: startOfDay, $lte: endOfDay }
+                                }
+                            },
+                            { $sort: { date: -1 } }, // Sort by date, newest first
+                            { $limit: 10 } // Get the top 10
+                        ]
+                    }
+                },
+                // 3. Project the results into a clean, flat structure.
+                // The $facet stage returns an object with arrays. We use $arrayElemAt
+                // to safely extract the single result object from each array.
+                // $ifNull is used to provide a default value if a facet pipeline returns no documents.
+                {
+                    $project: {
+                        _id: 0, // Exclude the default _id field
+                        totalInRange: { $ifNull: [{ $arrayElemAt: ['$dateRangeStats.totalAmount', 0] }, 0] },
+                        approvedInRange: { $ifNull: [{ $arrayElemAt: ['$dateRangeStats.approvedAmount', 0] }, 0] },
+                        unapprovedInRange: { $ifNull: [{ $arrayElemAt: ['$dateRangeStats.unapprovedAmount', 0] }, 0] },
+                        documentCountInRange: { $ifNull: [{ $arrayElemAt: ['$dateRangeStats.documentCount', 0] }, 0] },
+                        highestSpendingCategory: { $ifNull: [{ $arrayElemAt: ['$highestSpendingCategory', 0] }, { _id: 'N/A', totalSpent: 0 }] },
+                        totalForMonth: { $ifNull: [{ $arrayElemAt: ['$monthlyTotal.total', 0] }, 0] },
+                        latestTransactions: { $ifNull: ['$latestTransactions', []] }
+                    }
+                }
+            ];
+
+            return this.expenseModel.aggregate(pipeline);
         } catch (error) {
             errorLog(`error getting  total expenses ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
 
     }
+
+    async getExpenseData(option: string, req: any): Promise<any> {
+        let now = new Date(new Date().getTime() + 60 * 60 * 1000);
+        let startDate, endDate, groupBy;
+
+        switch (option) {
+            case "Today":
+                startDate = new Date(now.setHours(0, 0, 0, 0));
+                endDate = new Date(now.setHours(24, 59, 59, 999));
+                groupBy = {
+                    for: {
+                        $add: [
+                            {
+                                $divide: [
+                                    { $subtract: [{ $hour: "$date" }, { $mod: [{ $hour: "$date" }, 2] }] },
+                                    2
+                                ]
+                            },
+                            1
+                        ]
+                    }
+                };
+                break;
+            case "This Week":
+                startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+                endDate = new Date(now.setDate(now.getDate() - now.getDay() + 6));
+                groupBy = { for: { $dayOfWeek: "$date" } };
+                break;
+            case "Last 7 Days":
+                startDate = new Date();
+                startDate.setDate(startDate.getDate() - 6);
+                startDate.setHours(0, 0, 0, 0);
+
+                endDate = new Date();
+                endDate.setHours(24, 59, 59, 999);
+
+                groupBy = {
+                    for: {
+                        $subtract: [
+                            {
+                                $add: [
+                                    {
+                                        $dateDiff: {
+                                            startDate: startDate,
+                                            endDate: "$date",
+                                            unit: "day"
+                                        }
+                                    },
+                                    1
+                                ]
+                            },
+                            1
+                        ]
+                    }
+                };
+                break;
+            case "Last Week":
+                startDate = new Date(now.setDate(now.getDate() - now.getDay() - 7));
+                endDate = new Date(now.setDate(now.getDate() - now.getDay() - 1));
+                groupBy = { for: { $dayOfWeek: "$date" } };
+                break;
+            case "This Month":
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                groupBy = { for: { $dayOfMonth: "$date" } };
+                break;
+            case "Last Month":
+                startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+                groupBy = { for: { $dayOfMonth: "$date" } };
+                break;
+            case "First Quarter":
+                startDate = new Date(now.getFullYear(), 0, 1);
+                endDate = new Date(now.getFullYear(), 3, 0);
+                groupBy = { for: { $month: "$date" } };
+                break;
+            case "Second Quarter":
+                startDate = new Date(now.getFullYear(), 3, 1);
+                endDate = new Date(now.getFullYear(), 6, 0);
+                groupBy = { for: { $month: "$date" } };
+                break;
+            case "Third Quarter":
+                startDate = new Date(now.getFullYear(), 6, 1);
+                endDate = new Date(now.getFullYear(), 9, 0);
+                groupBy = { for: { $month: "$date" } };
+                break;
+            case "Fourth Quarter":
+                startDate = new Date(now.getFullYear(), 9, 1);
+                endDate = new Date(now.getFullYear(), 12, 0);
+                groupBy = { for: { $month: "$date" } };
+                break;
+            case "This Year":
+                startDate = new Date(now.getFullYear(), 0, 1);
+                endDate = new Date(now.getFullYear(), 11, 31);
+                groupBy = { for: { $month: "$date" } };
+                break;
+            default:
+                throw new Error("Invalid option");
+        }
+
+        const expenseData = await this.expenseModel.aggregate([
+            { $match: { date: { $gte: startDate, $lte: endDate }, location: req.user.location } },
+            { $group: { _id: groupBy, totalExpenses: { $sum: "$amount" } } },
+            { $sort: { "_id": 1 } },
+            { $project: { _id: 0, for: "$_id.for", totalExpenses: 1 } }
+        ]);
+
+        return expenseData;
+    };
+
 }

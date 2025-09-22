@@ -10,7 +10,7 @@ import { QueryDto } from 'src/helpers/query.dto';
 
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor, Role.Accounting)
 @Controller('servingsize')
 export class ServingSizeController {
   constructor(private readonly servingSizeService: ServingSizeService) { }

@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from 'mongoose';
 export type CashflowDocument = Cashflow & Document;
 
+
 @Schema({
     timestamps: {
         currentTime: () => {
@@ -11,7 +12,7 @@ export type CashflowDocument = Cashflow & Document;
             return new Date(now.getTime() + 60 * 60 * 1000);
         }
     }
-}) 
+})
 export class Cashflow {
     @Prop({ required: true, type: String })
     title: string;
@@ -20,13 +21,11 @@ export class Cashflow {
     paymentFor: string;
 
     @Prop({ default: 0, type: Number })
-    cash: number;
-
-    @Prop({ default: 0, type: Number })
-    bank: number;
+    amount: number;
 
     @Prop()
     initiator: string;
+
     @Prop()
     location: string;
 
@@ -37,10 +36,7 @@ export class Cashflow {
     type: string;
 
     @Prop({ default: 0, type: Number })
-    CashBalanceAfter: number;
-
-    @Prop({ default: 0, type: Number })
-    BankBalanceAfter: number
+    balanceAfter: number;
 
     @Prop({
         required: true,

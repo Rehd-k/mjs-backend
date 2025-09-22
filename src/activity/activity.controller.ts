@@ -13,7 +13,7 @@ import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 export class ActivityController {
     constructor(private readonly activityLogService: ActivityService) { }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Accounting)
     @Get()
     async getLogs(
         @Query() query: QueryDto,

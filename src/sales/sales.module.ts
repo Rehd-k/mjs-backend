@@ -9,6 +9,7 @@ import { CustomerModule } from 'src/customer/customer.module';
 import { ActivityModule } from 'src/activity/activity.module';
 import { StockFlowModule } from 'src/stock-flow/stock-flow.module';
 import { DepartmentModule } from 'src/department/department.module';
+import { CashflowModule } from 'src/cashflow/cashflow.module';
 @Module({
   imports: [
     forwardRef(() => ProductModule),
@@ -19,7 +20,8 @@ import { DepartmentModule } from 'src/department/department.module';
     StockFlowModule,
     PurchasesModule,
     ActivityModule,
-    DepartmentModule
+    DepartmentModule,
+    CashflowModule
   ],
   providers: [SalesService],
   controllers: [SalesController],

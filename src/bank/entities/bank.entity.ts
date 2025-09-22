@@ -32,10 +32,10 @@ export class Bank {
     @Prop({ type: [String] })
     access: string[]
 
-    @Prop({ type: Types.ObjectId, ref: 'InwardPayment' })
+    @Prop({ type: Types.ObjectId, ref: 'Cashflow' })
     inward: Types.ObjectId;
 
-    @Prop({ type: Types.ObjectId, ref: 'OutwardPayment' })
+    @Prop({ type: Types.ObjectId, ref: 'Cashflow' })
     outward: Types.ObjectId;
 
     @Prop({ required: true, type: String })

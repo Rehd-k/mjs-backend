@@ -6,5 +6,6 @@ export enum Role {
   Staff = 'staff',
   Waiter = 'waiter',
   Bar = 'bar',
-  Supervisor = 'supervisor'
+  Supervisor = 'supervisor',
+  Accounting = 'accounting'
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, Query } from '@nestjs/common';
 import { BankService } from './bank.service';
 import { CreateBankDto } from './dto/create-bank.dto';
 import { UpdateBankDto } from './dto/update-bank.dto';
@@ -19,12 +19,13 @@ export class BankController {
   }
 
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar)
+  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting, Role.Manager)
   @Get()
   findAll(
-    @Req() req: any
+    @Req() req: any,
+    @Query() query: any
   ) {
-    return this.bankService.findAll(req);
+    return this.bankService.findAll(query, req);
   }
 
   @Roles(Role.God, Role.Admin, Role.Manager)
@@ -33,14 +34,14 @@ export class BankController {
     return this.bankService.findOne(id);
   }
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar)
+  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting)
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateBankDto: UpdateBankDto) {
     return this.bankService.update(id, updateBankDto);
   }
 
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar)
+  @Roles(Role.God, Role.Admin)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.bankService.remove(id);

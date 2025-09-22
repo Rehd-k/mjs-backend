@@ -26,7 +26,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.God, Role.Admin)
+  @Roles(Role.God, Role.Admin, Role.Manager)
   @Post('register')
   async register(@Req() req: any, @Body() body: any) {
 

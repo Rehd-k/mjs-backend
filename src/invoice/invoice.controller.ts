@@ -10,17 +10,18 @@ import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
 
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting)
 @Controller('invoice')
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) { }
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+
   @Post()
   create(@Body() createInvoiceDto: CreateInvoiceDto, @Req() req: any) {
     return this.invoiceService.create(createInvoiceDto, req);
   }
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+
   @Get()
   findAll(
     @Query() query: QueryDto, @Req() req: any
@@ -28,7 +29,7 @@ export class InvoiceController {
     return this.invoiceService.findAll(query, req);
   }
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+
   @Get('customer')
   findAllForCustomer(
     @Query() query: QueryDto, @Req() req: any
@@ -36,7 +37,6 @@ export class InvoiceController {
     return this.invoiceService.findAllCustomersInvoices(query, req);
   }
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
   @Get('customer/dashboard')
   findForCustomerDashbaord(
     @Query() query: QueryDto, @Req() req: any
@@ -45,7 +45,6 @@ export class InvoiceController {
   }
 
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
   @Get('/send-whatsapp/:id')
   sendMessage(
     @Param('id') id: string
@@ -53,19 +52,16 @@ export class InvoiceController {
     return this.invoiceService.sendMessage(id);
   }
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
   @Get(':filter')
   findOne(@Param('filter') filter: string) {
     return this.invoiceService.findOne(filter);
   }
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
   @Put('update/:filter')
   update(@Param('filter') filter: string, @Body() updateInvoiceDto: UpdateInvoiceDto, @Req() req: any) {
     return this.invoiceService.update(filter, updateInvoiceDto, req);
   }
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
   @Delete(':filter')
   remove(@Param('filter') filter: string, @Req() req: any) {
     return this.invoiceService.remove(filter, req);

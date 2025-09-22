@@ -22,10 +22,17 @@ export class BankService {
         }
     }
 
-    async findAll(req): Promise<Bank[]> {
+    async findAll(query, req): Promise<Bank[]> {
+        const {
+            filter = '{}',
+            select = ''
+        } = query;
+        const parsedFilter = JSON.parse(filter);
         try {
-            const banks =  await this.bankModel.find({location : req.user.location}).exec();
-      
+            const banks = await this.bankModel.find({ ...parsedFilter, location: req.user.location })
+                .select(select)
+                .exec();
+
             return banks
         } catch (error) {
             errorLog(`Error finding banks: ${error.message}`, "ERROR")

@@ -27,6 +27,7 @@ export class RmPurchasesService {
     try {
       CreateRmPurchaseDto.location = req.user.location;
       CreateRmPurchaseDto.initiator = req.user.username;
+      let cashFlow;
       const createdRmPurchase = new this.RmPurchaseModel(CreateRmPurchaseDto);
       const rmProduct = await this.rawMaterialModel.findOne({ _id: createdRmPurchase.rawmaterialId.toString() });
       if (!rmProduct)
@@ -43,7 +44,7 @@ export class RmPurchasesService {
         })
 
         if (departmentProduct == -1) {
-            mainDepartment.RawGoods.push(
+          mainDepartment.RawGoods.push(
             {
               title: rmProduct.title,
               productId: new mongoose.Types.ObjectId(rmProduct._id),
@@ -52,7 +53,7 @@ export class RmPurchasesService {
               unit: rmProduct.unit,
               unitCost: Math.round(Number(createdRmPurchase.totalPayable) / Number(createdRmPurchase.quantity))
             }
-            )
+          )
         } else {
           mainDepartment.RawGoods[departmentProduct].quantity = mainDepartment.finishedGoods[departmentProduct].quantity + Number(createdRmPurchase.quantity)
         }
@@ -60,21 +61,33 @@ export class RmPurchasesService {
         await Promise.all([mainDepartment.save(), rmProduct.save()]);
       }
       const order = await createdRmPurchase.save();
-      await this.supplierService.addOrder(createdRmPurchase.supplier, order._id);
+
       if (createdRmPurchase.debt < createdRmPurchase.totalPayable) {
-        const paymentInfo = {
-          title: `Purchase Payment For ${rmProduct?.title}`,
-          paymentFor: createdRmPurchase._id,
-          cash: createdRmPurchase.cash,
-          bank: createdRmPurchase.bank,
-          type: 'out',
-          moneyFrom: createdRmPurchase.moneyFrom,
-          transactionDate: createdRmPurchase.purchaseDate,
-          initiator: req.user.username,
-          location: req.user.location
-        }
-        await this.cashflowService.createPayment(paymentInfo);
+
+        let title = `Purchase Payment For ${rmProduct?.title}`;
+        let paymentFor = createdRmPurchase._id;
+        let cash = createdRmPurchase.cash;
+        let bank = createdRmPurchase.bank;
+        let type = 'out';
+        let moneyFrom = createdRmPurchase.moneyFrom;
+        let transactionDate = createdRmPurchase.purchaseDate;
+        let initiator = req.user.username;
+        let location = req.user.location;
+
+        cashFlow = await this.cashflowService.createPayment(
+          title,
+          paymentFor.toString(),
+          cash,
+          bank,
+          type,
+          moneyFrom,
+          transactionDate,
+          initiator,
+          location
+
+        );
       }
+      await this.supplierService.addOrder(createdRmPurchase.supplier, order._id, createdRmPurchase.totalPayable, cashFlow._id);
       return order
     } catch (error) {
       errorLog(`Failed to create rm purchase ${error}`, "ERROR")

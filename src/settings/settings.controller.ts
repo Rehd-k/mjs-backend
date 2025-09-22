@@ -8,7 +8,7 @@ import { Role } from 'src/helpers/enums';
 import { Roles } from 'src/helpers/roles/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Accounting)
 @Controller('settings')
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) { }

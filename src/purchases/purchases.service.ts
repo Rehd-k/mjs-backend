@@ -31,6 +31,10 @@ export class PurchasesService {
             createPurchaseDto.initiator = req.user.username;
             const createdPurchase = new this.purchaseModel(createPurchaseDto);
             const product = await this.productService.findOne(createdPurchase.productId.toString());
+            let cashFlow: { cash: any | null, bank: any | null } = {
+                cash: null,
+                bank: null
+            }
             if (!product)
                 throw new BadRequestException('Product Not Found')
 
@@ -65,22 +69,40 @@ export class PurchasesService {
 
             }
             const order = await createdPurchase.save();
-            if (createdPurchase.supplier) {
-                await this.supplierService.addOrder(createdPurchase.supplier, order._id);
-            }
+
             if (createdPurchase.debt < createdPurchase.totalPayable) {
-                const paymentInfo = {
-                    title: `Purchase Payment ${product.title}`,
-                    paymentFor: createdPurchase._id,
-                    cash: createdPurchase.cash,
-                    bank: createdPurchase.bank,
-                    type: 'out',
-                    moneyFrom: createdPurchase.moneyFrom,
-                    transactionDate: createdPurchase.purchaseDate,
-                    initiator: req.user.username,
-                    location: req.user.location
+                let title = `Purchase Payment ${product.title}`;
+                let paymentFor = createdPurchase._id;
+                let cash = createdPurchase.cash;
+                let bank = createdPurchase.bank;
+                let type = 'out';
+                let moneyFrom = createdPurchase.moneyFrom;
+                let transactionDate = createdPurchase.purchaseDate;
+                let initiator = req.user.username;
+                let location = req.user.location;
+
+                cashFlow = await this.cashflowService.createPayment(
+                    title,
+                    paymentFor.toString(),
+                    cash,
+                    bank,
+                    type,
+                    moneyFrom,
+                    transactionDate,
+                    initiator,
+                    location
+                );
+            }
+            if (createdPurchase.supplier) {
+                if (cashFlow.bank || cashFlow.bank) {
+                    if (cashFlow.bank)
+                        await this.supplierService.addOrder(createdPurchase.supplier, order._id, createdPurchase.totalPayable, cashFlow.bank);
+                    if (cashFlow.cash)
+                        await this.supplierService.addOrder(createdPurchase.supplier, order._id, createdPurchase.totalPayable, cashFlow.cash);
+                } else {
+                    await this.supplierService.addOrder(createdPurchase.supplier, order._id, createdPurchase.totalPayable, cashFlow.cash);
                 }
-                await this.cashflowService.createPayment(paymentInfo);
+
             }
             return order
         } catch (error) {
@@ -101,22 +123,31 @@ export class PurchasesService {
         if (createCashflowDto.bank > 0) {
             purchase.bank = purchase.bank + createCashflowDto.bank;
         }
+        let title = 'Purchase Payment';
+        let paymentFor = purchase._id.toString();
+        let cash = createCashflowDto.cash;
+        let bank = createCashflowDto.bank;
+        let type = 'out';
+        let moneyFrom = createCashflowDto.moneyFrom;
+        let transactionDate = createCashflowDto.transactionDate;
+        let initiator = req.user.initiator;
+        let location = req.user.location;
 
-
-
-        const paymentInfo = {
-            title: 'Purchase Payment',
-            paymentFor: purchase._id,
-            cash: createCashflowDto.cash,
-            bank: createCashflowDto.bank,
-            type: 'out',
-            moneyFrom: createCashflowDto.moneyFrom,
-            transactionDate: createCashflowDto.transactionDate,
-            initiator: req.user.initiator,
-            location: req.user.location
+        const payment = await this.cashflowService.createPayment(
+            title,
+            paymentFor,
+            cash,
+            bank,
+            type,
+            moneyFrom,
+            transactionDate,
+            initiator,
+            location,
+        )
+        if (cash && cash > 0) {
+            purchase.payments.push(payment[0]._id)
         }
-        const payment = await this.cashflowService.createPayment(paymentInfo)
-        purchase.payments.push(payment._id)
+
         const updatedPurchase = await purchase.save()
         return updatedPurchase
     }
@@ -561,5 +592,34 @@ export class PurchasesService {
             throw new BadRequestException(error);
         }
 
+    }
+
+    async getSuppliersPurchases(query: QueryDto, req: any) {
+        const {
+            filter = '{}',
+            sort = '{}',
+            skip = 0,
+            select = '',
+            limit = 10
+        } = query;
+        try {
+            const parsedFilter = JSON.parse(filter);
+            const parsedSort = JSON.parse(sort);
+            const purchases = await this.purchaseModel
+                .find({ ...parsedFilter, location: req.user.location }) // Apply filtering
+                .sort(parsedSort)   // Sorting
+                .limit(Number(limit))
+                .skip(Number(skip))
+                .select(`${select}`)
+                .populate({
+                    path: 'productId',
+                    select: 'title',// Selecting only the 'name' field from the supplier
+                    match: { _id: { $exists: true } }
+                })
+            return purchases
+        } catch (error) {
+            errorLog(error, "ERROR")
+            throw new BadRequestException(error);
+        }
     }
 }

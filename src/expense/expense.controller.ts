@@ -9,7 +9,7 @@ import { ExpensesCategoryService } from './exp.cat.service';
 
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Accounting)
 @Controller('expense')
 export class ExpensesController {
     constructor(private readonly expensesService: ExpensesService, private readonly expensesCategoryService: ExpensesCategoryService) { }
@@ -37,10 +37,15 @@ export class ExpensesController {
         return this.expensesService.getExpenses(query, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff)
     @Get('/total')
     async getTotalExpenses(@Query() query: QueryDto, @Req() req: any) {
         return this.expensesService.getTotalExpenses(query, req);
+    }
+
+    @Get('/chart')
+    async getExpensesChart(@Query() query: QueryDto, @Req() req: any) {
+        const filterOption = query.filter ?? "Today";
+        return this.expensesService.getExpenseData(filterOption, req);
     }
 
 

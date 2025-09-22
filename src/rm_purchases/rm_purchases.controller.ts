@@ -8,7 +8,7 @@ import { Roles } from 'src/helpers/roles/roles.decorator';
 import { RolesGuard } from 'src/helpers/roles/roles.guard';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Accounting)
 @Controller('rm-purchases')
 export class RmPurchasesController {
   constructor(private readonly rmPurchasesService: RmPurchasesService) { }

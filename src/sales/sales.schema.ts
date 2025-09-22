@@ -148,8 +148,8 @@ export class Sale {
     @Prop()
     profit: number;
 
-    @Prop({ type: Types.ObjectId, ref: 'Bank' })
-    bank: Types.ObjectId;
+    @Prop()
+    bank: string;
 
     @Prop({ type: [ReturnsSchema] })
     returns: Returns[]

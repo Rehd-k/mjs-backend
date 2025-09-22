@@ -11,6 +11,7 @@ import { ActivityService } from 'src/activity/activity.service';
 import { errorLog } from 'src/helpers/do_loggers';
 import { StockFlowService } from 'src/stock-flow/stock-flow.service';
 import { Department } from 'src/department/entities/department.entity';
+import { CashflowService } from 'src/cashflow/cashflow.service';
 
 
 
@@ -24,6 +25,7 @@ export class SalesService {
         private activityService: ActivityService,
         private customerService: CustomerService,
         private purchaseService: PurchasesService,
+        private cashFlow: CashflowService
 
     ) { }
 
@@ -53,6 +55,7 @@ export class SalesService {
             sellData.location = req.user.location
             sellData.transactionDate = new Date(sellData.transactionDate)
             const data = await this.saleModel.create(sellData);
+            await this.cashFlow.createPayment('Sales', data._id.toString(), data.cash, data.card + data.transfer, 'in', data.bank, data.transactionDate, data.handler, data.location)
             for (const element of data.products) {
                 if (!sellData.invoiceId) {
                     await this.inventoryService.deductStock(element.productId.toString(), element.quantity, req, element.from, 'Sells', 'sells')
@@ -274,7 +277,7 @@ export class SalesService {
 
             parsedFilter.transactionDate = { $gte: startDate, $lte: endDate };
 
-            if (req.user.role === 'cashier' || req.user.role === 'staff' ||  req.user.role === 'waiter') {
+            if (req.user.role === 'cashier' || req.user.role === 'staff' || req.user.role === 'waiter') {
                 parsedFilter.handler = req.user.username;
             }
 
@@ -532,7 +535,7 @@ export class SalesService {
     }
     // Remeber to send in department id, to cover for data.from instead of department id
     async return(id: string, data: any, req: any) {
-        console.log(data);
+
         try {
             if (!data.handler) {
                 for (const element of data.returns) {
@@ -590,10 +593,10 @@ export class SalesService {
             sale.profit = profit
 
 
-            await sale.save();
+
             for (const element of data.returns) {
-        
-                const department = await this.departmentModel.findById(data.from)
+
+                const department = await this.departmentModel.findById(element.from)
 
                 if (!department) {
                     throw new BadRequestException('Invalid request payload');
@@ -608,10 +611,10 @@ export class SalesService {
                     );
                 }
                 sendingProduct.quantity += element.quantity;
-                await department.save()
+                await Promise.all([await sale.save(), department.save()])
                 await this.inventoryService.restockProduct(element.productId, element.quantity)
                 await this.inventoryService.deductFromSold(element.productId as any, element.quantity)
-                await this.stockFlowService.create('Returns Inward', element.title, element.quantity, 'sells', data.from, 'in', new Date(Date.now()), req.user.username, req.user.location)
+                await this.stockFlowService.create('Returns Inward', element.title, element.quantity, 'sells', element.from, 'in', new Date(Date.now()), req.user.username, req.user.location)
             }
 
 

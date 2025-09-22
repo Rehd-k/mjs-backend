@@ -14,13 +14,13 @@ import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 export class ProductController {
     constructor(private readonly productService: ProductService, private readonly inventoryService: InventoryService) { }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
     @Post()
     async createProduct(@Body() productDto: any, @Req() req: any) {
         return this.productService.create(productDto, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor, Role.Accounting)
     @Get()
     async getAllProducts(
         @Query() query: QueryDto,
@@ -30,7 +30,7 @@ export class ProductController {
         return data;
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
     @Get('/dashboard/:id')
     async getDashboardData(
         @Param('id') id: string,
@@ -49,7 +49,7 @@ export class ProductController {
 
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
     @Get('/findone/:id')
     async getProductById(@Param('id') productId: string) {
 
@@ -58,13 +58,13 @@ export class ProductController {
 
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
     @Put('/update/:id')
     async updateProduct(@Param('id') productId: Types.ObjectId, @Body() updateDto: any) {
         return this.productService.update(productId, updateDto);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
     @Delete('/delete/:id')
     async deleteProduct(@Param('id') productId: string) {
         return this.productService.remove(productId);

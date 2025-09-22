@@ -8,6 +8,7 @@ import { Roles } from 'src/helpers/role/roles.decorator';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
 
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('charges')
 export class ChargesController {
@@ -19,7 +20,7 @@ export class ChargesController {
     try {
       return this.chargesService.create(createChargeDto, req);
     } catch (error) {
-      
+
       throw new Error(`Error creating charge, ${error}`);
     }
 
@@ -32,7 +33,7 @@ export class ChargesController {
     try {
       return this.chargesService.findAll(req);
     } catch (error) {
-      
+
       throw new Error(`Error getting charges, ${error}`);
     }
 
@@ -43,7 +44,7 @@ export class ChargesController {
     try {
       return this.chargesService.findOne(id);
     } catch (error) {
-      
+
       throw new Error(`Error getting charge, ${error}`);
 
     }
@@ -56,7 +57,7 @@ export class ChargesController {
     try {
       return this.chargesService.update(id, updateChargeDto);
     } catch (error) {
-      
+
       throw new Error(`Error updating charge, ${error}`);
 
     }
@@ -69,7 +70,7 @@ export class ChargesController {
     try {
       return this.chargesService.remove(id);
     } catch (error) {
-      
+
       throw new Error(`Error deleting charge, ${error}`);
 
     }

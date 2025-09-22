@@ -13,19 +13,19 @@ import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 export class SupplierController {
     constructor(private readonly supplierService: SupplierService) { }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Accounting)
     @Post()
     async createSupplier(@Body() data: any, @Req() req: any) {
         return this.supplierService.createSupplier(data, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
-    @Post(':id/orders')
-    async addOrder(@Param('id') supplierId: Types.ObjectId, @Body() order: any) {
-        return this.supplierService.addOrder(supplierId, order);
-    }
+    // @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
+    // @Post(':id/orders')
+    // async addOrder(@Param('id') supplierId: Types.ObjectId, @Body() order: any) {
+    //     return this.supplierService.addOrder(supplierId, order, 0, null as Types.ObjectId);
+    // }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Accounting)
     @Get()
     async getSuppliers(
         @Query() query: QueryDto,
@@ -35,7 +35,17 @@ export class SupplierController {
     }
 
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Accounting)
+    @Get('dashbaord')
+    async getSuppliersDashboard(
+        @Req() req: any
+    ) {
+        return this.supplierService.getSupplierDashboard(req);
+    }
+
+
+
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Bar, Role.Cashier, Role.Waiter, Role.Accounting)
     @Get(':id')
     async getSupplierDetails(@Param('id') supplierId: string) {
         return this.supplierService.getSupplierDetails(supplierId);

@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { PipelineStage } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Supplier } from './supplier.schema';
@@ -48,13 +49,98 @@ export class SupplierService {
         }
     }
 
-    async addOrder(supplierId: Types.ObjectId, orderId: Types.ObjectId): Promise<any> {
+    async getSupplierDashboard(req
+        : any
+    ) {
+        const pipeline: PipelineStage[] = [
+            {
+
+                $facet: {
+                    topSuppliers: [
+                        {
+                            $match: {
+                                location: req.user.location
+                            }
+                        },
+                        { $sort: { amountSpent: -1 as 1 | -1 } },
+                        { $limit: 5 },
+                        {
+                            $project: {
+                                name: 1,
+                                amountSpent: 1,
+                                email: 1,
+                                phone_number: 1,
+                                address: 1
+                            },
+                        },
+                    ],
+                    latestAdditions: [
+                        {
+                            $match: {
+                                location: req.user.location
+
+                            }
+                        },
+                        { $sort: { createdAt: -1 as 1 | -1 } },
+                        { $limit: 5 },
+
+                        {
+                            $project: {
+                                name: 1,
+                                createdAt: 1,
+                                email: 1,
+                                phone_number: 1,
+                                address: 1
+                            },
+                        },
+                    ],
+                    statusSummary: [
+                        {
+                            $match: {
+                                location: req.user.location
+                            }
+                        },
+                        {
+                            $group: {
+                                _id: "$status",
+                                count: { $sum: 1 },
+                            },
+                        },
+                    ],
+                },
+            },
+        ];
+
+        const result = await this.supplierModel.aggregate(pipeline).exec();
+
+        let status = {
+            inactive: 0,
+            active: 0
+        };
+        for (const element of result[0].statusSummary) {
+            if (element._id == 'inactive') {
+                status.inactive = element.count
+            } else {
+                status.active = element.count
+            }
+        }
+        result[0].statusSummary = status;
+        return result[0]
+    }
+
+    async addOrder(supplierId: Types.ObjectId, orderId: Types.ObjectId, amountSpent: number, paymentId: Types.ObjectId,): Promise<any> {
         try {
             const supplier = await this.supplierModel.findById(supplierId);
             if (!supplier) {
                 throw new BadRequestException('Supplier not found');
             }
             supplier.orders.push(orderId);
+            supplier.amountSpent += amountSpent;
+            if (paymentId) {
+                supplier.payments.push(paymentId);
+            }
+
+
 
             await supplier.save()
         } catch (error) {
@@ -65,8 +151,27 @@ export class SupplierService {
     }
 
     async getSupplierDetails(supplierId: string): Promise<any> {
+        const pipeline = [
+            {
+                $match: { _id: new Types.ObjectId(supplierId) }
+            },
+            {
+                $project: {
+                    name: 1,
+                    email: 1,
+                    phone_number: 1,
+                    status: 1,
+                    amountSpent: 1,
+                    contactPerson: 1,
+                    address: 1
+                }
+            }
+
+        ];
+
         try {
-            return this.supplierModel.findById(supplierId).populate('orders.items.product').exec();
+            const suppliers = await this.supplierModel.aggregate(pipeline);
+            return suppliers[0]
         } catch (error) {
             errorLog(`Error supplier details ${error}`, "ERROR")
             throw new BadRequestException(error);

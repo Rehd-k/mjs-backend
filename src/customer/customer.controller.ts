@@ -7,12 +7,13 @@ import { Role } from 'src/helpers/enums';
 import { Roles } from 'src/helpers/role/roles.decorator';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting)
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('customer')
 export class CustomerController {
     constructor(private readonly customerService: CustomerService) { }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Waiter, Role.Cashier, Role.God, Role.Supervisor)
     @Get()
     findAll(
         @Query() query: QueryDto,
@@ -21,25 +22,24 @@ export class CustomerController {
         return this.customerService.getAllCustomers(query, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.God, Role.Supervisor)
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.customerService.getCustomerDetails(id);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.God, Role.Supervisor)
+
     @Post()
     create(@Body() createCustomerDto: any, @Req() req: any) {
         return this.customerService.createCustomer(createCustomerDto, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.God, Role.Supervisor)
+
     @Post(':id')
     update(@Param('id') customerId: string, @Body() updateCustomerDto: any) {
         return this.customerService.updateCustomer(customerId, updateCustomerDto);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.God, Role.Supervisor)
+
     @Post(':id/delete')
     delete(@Param('id') id: string) {
         return this.customerService.deleteCustomer(id);

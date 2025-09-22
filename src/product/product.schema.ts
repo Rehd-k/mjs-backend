@@ -74,7 +74,7 @@ export class Product extends Document {
     sold: number;
 
 
-    @Prop({ default: false, index: true }) // 🔹 Indexable for fast queries
+    @Prop({ default: true, index: true }) // 🔹 Indexable for fast queries
     lowStock: boolean;
 
     @Prop({ required: true, default: 0 })

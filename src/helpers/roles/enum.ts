@@ -2,9 +2,10 @@ export enum Role {
   God = 'god',
   Admin = 'admin',
   Manager = 'manager',
-  Cashier = 'cashier',
+  Cashier = 'cashier', 
   Staff = 'staff',
   Waiter = 'waiter',
   Bar = 'bar',
-  Supervisor = 'supervisor'
+  Supervisor = 'supervisor',
+  Accounting = 'accounting'
 }

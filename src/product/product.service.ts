@@ -33,16 +33,15 @@ export class ProductService {
             limit = 10,
             skip = 0,
             select = '',
+            quntfilter = ''
         } = query;
         const parsedFilter = JSON.parse(filter);
         const parsedSort = JSON.parse(sort);
 
-        if (parsedFilter.filter == 'no stock') {
+        if (quntfilter == 'no stock') {
             parsedFilter.quantity = 0;
-            delete parsedFilter.filter
-        } else if (parsedFilter.filter == 'low stock') {
+        } else if (quntfilter == 'low stock') {
             parsedFilter.lowStock = true;
-            delete parsedFilter.filter
         }
 
         // If the filter contains a 'barcode' key, set skip to 0

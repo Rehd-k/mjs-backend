@@ -10,9 +10,27 @@ import { RolesGuard } from 'src/helpers/roles/roles.guard';
 
 @Controller('cashflow')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting)
 export class CashflowController {
   constructor(private readonly cashflowService: CashflowService) { }
+
+  @Post()
+  createTransaction(
+    @Body() body: any,
+    @Req() req: any
+  ) {
+
+    let title = body.title;
+    let paymentFor = body.paymentFor;
+    let cash = Number(body.cash);
+    let bank = Number(body.bank);
+    let type = body.type;
+    let moneyFrom = body.moneyFrom;
+    let transactionDate = body.transactionDate;
+    let initiator = req.user.username;
+    let location = req.user.location
+    return this.cashflowService.createPayment(title, paymentFor, cash, bank, type, moneyFrom, transactionDate, initiator, location)
+  }
 
   @Get()
   findAll(

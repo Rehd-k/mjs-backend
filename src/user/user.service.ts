@@ -11,13 +11,11 @@ export class UserService {
     constructor(@InjectModel(User.name) private readonly userModel: Model<User>) { }
 
     async create(user: any) {
-        console.log(user)
         try {
             if (user.role === 'god')
                 user.initiator = 'god'
             return await this.userModel.create(user);
         } catch (error) {
-            console.log(error);
             if (error && error.code === 11000) {
                 let errMessage = `User with username / email already exists`;
                 errorLog(`${errMessage}`, "ERROR")
@@ -40,7 +38,7 @@ export class UserService {
     }
 
     async getAllUsers(query: QueryDto, req) {
-        console.log(query, req.user)
+
         try {
             const {
                 filter = '{}',
@@ -70,7 +68,9 @@ export class UserService {
 
     async getOneById(id: string) {
         try {
-            return this.userModel.findById(id);
+            const user = await  this.userModel.findById(id);
+            console.log(user)
+            return user;
         } catch (error) {
             errorLog(`error finding one users ${error}`, "ERROR")
             throw new BadRequestException(error);

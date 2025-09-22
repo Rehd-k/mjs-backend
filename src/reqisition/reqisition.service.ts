@@ -53,7 +53,6 @@ export class ReqisitionService {
         .skip(Number(skip))
         .select(select)
         .exec()
-      console.log(reqisitions)
       return reqisitions;
     } catch (error) {
       errorLog(`Error geting all  reqisition: ${error}`, "ERROR")

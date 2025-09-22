@@ -18,7 +18,7 @@ export class AuthService {
   async create(createAuthDto: CreateAuthDto) {
 
     createAuthDto['initiator'] = createAuthDto['req']['user']['username']
-    console.log(createAuthDto)
+
     try {
       return await this.authModel.create(createAuthDto);
     } catch (error) {
@@ -44,7 +44,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found in this location');
     }
-    console.log(user)
+
     if (user && password === user.password) {
       const { password, ...result } = user.toObject();
       return result;

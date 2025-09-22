@@ -210,12 +210,7 @@ export class DepartmentService {
     item: Omit<StockItem, 'toSend'> & { quantity: number },
     senderProduct: any,
   ): void {
-    console.log(
-      section,
-      productId,
-      item,
-      senderProduct,
-    )
+
     const product = department[section].find((p) => p.productId.toString() === productId.toString());
     if (product) {
       product.quantity += item.quantity;
@@ -263,7 +258,7 @@ export class DepartmentService {
 
         // Find sender product for copying details
         const senderProduct = sender[section].find((p) => p.productId.toString() === productId._id.toString());
-        console.log(senderProduct)
+
         // Increase stock in receiver
         this.increaseStock(receiver, section, productId._id, { ...item, quantity: toSend }, senderProduct);
         if (newHistory) {

@@ -10,7 +10,7 @@ import { RolesGuard } from 'src/helpers/roles/roles.guard';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('reqisition')
-@Roles(Role.God, Role.Admin, Role.Manager)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
 export class ReqisitionController {
   constructor(private readonly reqisitionService: ReqisitionService) { }
 

@@ -7,28 +7,28 @@ import { RolesGuard } from 'src/helpers/role/roles.guard';
 import { Role } from 'src/helpers/enums';
 import { Roles } from 'src/helpers/role/roles.decorator';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
-import { errorLog } from 'src/helpers/do_loggers';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Bar, Role.Cashier, Role.Waiter, Role.Accounting)
 @Controller('purchases')
 export class PurchasesController {
 
     constructor(private readonly purchasesService: PurchasesService) { }
 
-    @Roles(Role.God, Role.Admin, Role.Manager)
+    // @Roles(Role.God, Role.Admin, Role.Manager)
     @Post()
     create(@Body() createPurchaseDto: any, @Req() req: any) {
         return this.purchasesService.create(createPurchaseDto, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager)
+    // @Roles(Role.God, Role.Admin, Role.Manager)
     @Post('make-payment')
     MakePAyment(@Body() createPurchaseDto: any, @Req() req: any) {
         return this.purchasesService.updatePurchasePayment(createPurchaseDto, req);
     }
 
 
-    @Roles(Role.God, Role.Admin, Role.Manager)
+    // @Roles(Role.God, Role.Admin, Role.Manager)
     @Get()
     findAll(
         @Query() query: QueryDto,
@@ -38,15 +38,15 @@ export class PurchasesController {
         return this.purchasesService.findAll(query, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager)
-    @Get(':id')
+    // @Roles(Role.God, Role.Admin, Role.Manager)
+    @Get('findOne/:id')
     findOne(@Param('id') id: string) {
         return this.purchasesService.findOne(id);
     }
 
 
 
-    @Roles(Role.God, Role.Admin, Role.Manager)
+    // @Roles(Role.God, Role.Admin, Role.Manager)
 
     @Patch('update/:id')
     async update(@Param('id') id: string, @Body() updatePurchaseDto: any,
@@ -60,5 +60,16 @@ export class PurchasesController {
     async doDamage(@Param('id') id: string, @Body() updatePurchaseDto: any, @Req() req: any) {
         return this.purchasesService.doDamagedGood(id, updatePurchaseDto, req);
     }
+
+
+    @Get('vendors')
+    getVendorsOrders(
+        @Query() query: QueryDto,
+        @Req() req: any
+    ) {
+        return this.purchasesService.getSuppliersPurchases(query, req);
+    }
+
+
 
 }

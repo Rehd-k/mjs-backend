@@ -7,6 +7,12 @@ class Product {
 
     @Prop()
     quantity: number;
+
+    @Prop({ required: true, min: 0 })
+    cost: number;
+
+    @Prop({ required: true, min: 0 })
+    unitCost: number;
 }
 
 
@@ -24,13 +30,13 @@ export class DepartmentHistory {
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })
     from: string;
 
-    @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Department' })
+    @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null })
     fromId: Types.ObjectId;
 
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })
     to: string;
 
-    @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Department' })
+    @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null })
     toId: Types.ObjectId;
 
     @Prop({
@@ -42,7 +48,7 @@ export class DepartmentHistory {
     products: Product[];
 
     @Prop()
-    section : string;
+    section: string;
 
     @Prop()
     location: string;

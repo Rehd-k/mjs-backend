@@ -35,6 +35,7 @@ import { StockFlowModule } from './stock-flow/stock-flow.module';
 import { StockSnapshotModule } from './stock-snapshot/stock-snapshot.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReqisitionModule } from './reqisition/reqisition.module';
+import { OtherIncomeModule } from './other-income/other-income.module';
 
 @Module({
   imports: [
@@ -95,7 +96,8 @@ import { ReqisitionModule } from './reqisition/reqisition.module';
     StockFlowModule,
     StockSnapshotModule,
     ScheduleModule.forRoot(),
-    ReqisitionModule
+    ReqisitionModule,
+    OtherIncomeModule
   ],
   controllers: [AppController],
   providers: [AppService],

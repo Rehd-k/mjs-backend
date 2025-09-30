@@ -322,7 +322,7 @@ export class InvoiceService {
           );
         }
         sendingProduct.quantity += item.quantity;
-        await this.stockFlowService.create('Returns Inward', item.title, item.quantity, 'Credit Sells', department._id, 'in', new Date(Date.now()), req.user.username, req.user.location)
+        await this.stockFlowService.create('Returns Inward', item.productId, item.quantity, null, department._id, 'in', new Date(Date.now()), req.user.username, req.user.location)
         await this.inventoryService.restockProduct(item.productId.toString(), item.quantity)
       }
       return true;

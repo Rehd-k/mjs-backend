@@ -19,6 +19,12 @@ export class DepartmentProduct {
 
     @Prop({ default: 0, required: true })
     quantity: number;
+
+    @Prop({ required: true, min: 0 })
+    cost: number;
+
+    @Prop({ required: true, min: 0 })
+    unitCost: number;
 }
 export const DepartmentProductSchema = SchemaFactory.createForClass(DepartmentProduct);
 

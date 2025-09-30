@@ -22,10 +22,10 @@ export class StockFlow {
     @Prop({ default: 0, type: Number })
     quantity: number;
 
-    @Prop({ type: Types.ObjectId, ref: 'Department', required: true })
+    @Prop({ type: Types.ObjectId, ref: 'Department', default: null })
     stockFrom: Types.ObjectId;
 
-    @Prop({ type: Types.ObjectId, ref: 'Department', required: true })
+    @Prop({ type: Types.ObjectId, ref: 'Department', default: null })
     stockTo: string;
 
     @Prop({ required: true, type: String, enum: ['in', 'out', 'contra'] })

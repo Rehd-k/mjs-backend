@@ -69,4 +69,9 @@ export class ExpensesController {
     async getExpensesCategories(@Req() req: any) {
         return this.expensesCategoryService.findAll(req);
     }
+
+    @Get('total-categories')
+    async getExpensesByCategory(@Query() query: QueryDto, @Req() req: any) {
+        return this.expensesService.getExpensesByCategory(query, req)
+    }
 }

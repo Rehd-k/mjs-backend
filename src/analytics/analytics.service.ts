@@ -656,5 +656,4 @@ export class AnalyticsService {
       }
     ]);
   }
-  // : Promise<ProductReport[]>
 }

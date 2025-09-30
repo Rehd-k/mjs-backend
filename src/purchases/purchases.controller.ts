@@ -62,6 +62,12 @@ export class PurchasesController {
     }
 
 
+    @Put('return/:id')
+    async doReturn(@Param('id') id: string, @Body() updatePurchaseDto: any, @Req() req: any) {
+        return this.purchasesService.doReturns(id, updatePurchaseDto, req);
+    }
+
+
     @Get('vendors')
     getVendorsOrders(
         @Query() query: QueryDto,
@@ -70,6 +76,13 @@ export class PurchasesController {
         return this.purchasesService.getSuppliersPurchases(query, req);
     }
 
+    @Get('getTotals')
+    pruchasesTotalsData(
+        @Query() query: QueryDto,
+        @Req() req: any
+    ) {
+        return this.purchasesService.pruchasesTotalsData(query, req);
+    }
 
 
 }

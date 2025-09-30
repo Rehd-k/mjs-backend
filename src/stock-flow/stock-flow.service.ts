@@ -21,17 +21,17 @@ export class StockFlowService {
   // woprking on balance brought down
   async create(
     title: string,
-    product: string,
+    product: Types.ObjectId | string,
     quantity: number,
-    stockFrom: Types.ObjectId | string,
-    stockTo: Types.ObjectId | string,
+    stockFrom: Types.ObjectId | string | null,
+    stockTo: Types.ObjectId | string | null,
     type: string,
     transactionDate: Date,
     initiator: string,
     location: string
   ) {
 
- 
+
     try {
       // Get latest payment to derive current balances
       const lastPayment = await this.stockFlowModel.findOne().sort({ createdAt: -1 }).lean();
@@ -73,23 +73,81 @@ export class StockFlowService {
       filter = '{}',
       sort = '{}',
       skip = 0,
+      limit = 50,
       select = '',
+      startDate,
+      endDate,
     } = query;
-    const parsedFilter = JSON.parse(filter);
-    const parsedSort = JSON.parse(sort);
 
     try {
-      return this.stockFlowModel.find({ ...parsedFilter, location: req.user.location })
+      let parsedFilter: Record<string, any> = {};
+      let parsedSort: Record<string, any> = {};
+
+      try {
+        parsedFilter = JSON.parse(filter);
+      } catch {
+        throw new BadRequestException('Invalid filter JSON');
+      }
+
+      try {
+        parsedSort = JSON.parse(sort);
+      } catch {
+        throw new BadRequestException('Invalid sort JSON');
+      }
+
+      if (!startDate) throw new BadRequestException("A start date is required");
+      if (!endDate) throw new BadRequestException("An end date is required");
+
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
+      parsedFilter.createdAt = {
+        ...(parsedFilter.createdAt || {}),
+        $gte: start,
+        $lte: end,
+      };
+
+      parsedFilter.location = req.user.location;
+
+      // ✅ Validate ObjectIds before querying
+      if (parsedFilter.stockFrom && !Types.ObjectId.isValid(parsedFilter.stockFrom)) {
+        delete parsedFilter.stockFrom; // or throw new BadRequestException("Invalid stockFrom ID");
+      }
+      if (parsedFilter.stockTo && !Types.ObjectId.isValid(parsedFilter.stockTo)) {
+        delete parsedFilter.stockTo;
+      }
+
+      const stockFlow = await this.stockFlowModel
+        .find(parsedFilter)
+        .populate({
+          path: 'stockFrom',
+          select: 'title',// Selecting only the 'name' field from the supplier
+          match: { _id: { $exists: true } }
+        })
+
+        .populate(
+          {
+            path: 'stockTo',
+            select: 'title',// Selecting only the 'name' field from the supplier
+            match: { _id: { $exists: true } }
+          }
+        )
         .sort(parsedSort)
         .skip(Number(skip))
+        .limit(Number(limit))
         .select(select)
-        .exec()
+        .exec();
+      console.log(stockFlow)
+      return stockFlow;
     } catch (error) {
-      errorLog(`Error finding all Payments ${error}`, "ERROR")
-      throw new BadRequestException(error);
+      errorLog(`Error finding all stock flows: ${error}`, "ERROR");
+      throw new BadRequestException(error.message || 'Failed to fetch stock flows');
     }
-
   }
+
   async findOne(id: string) {
     try {
       return this.stockFlowModel.findById(id)

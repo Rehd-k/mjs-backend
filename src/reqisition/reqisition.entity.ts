@@ -15,6 +15,9 @@ export type ReqisitionDocument = Reqisition & Document;
     },
 })
 export class ReqisitionProduct {
+    @Prop({ type: Types.ObjectId, ref: 'Department', default: null })
+    from: Types.ObjectId;
+
     @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
     productId: Types.ObjectId;
 
@@ -47,8 +50,11 @@ export class Reqisition {
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })
     initiator: string;
 
-    @Prop({ required: true, set: (title: string) => title.toLowerCase() })
+    @Prop({  set: (title: string) => title.toLowerCase() })
     from: string
+
+    @Prop({  set: (title: string) => title.toLowerCase() })
+    to: string
 
     @Prop({ type: Boolean, default: false })
     approved: boolean

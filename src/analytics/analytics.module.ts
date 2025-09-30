@@ -8,9 +8,11 @@ import { Expenses, ExpensesSchema } from 'src/expense/expenses.schema';
 import { Customer, CustomerSchema } from 'src/customer/customer.schema';
 import { Purchase, PurchaseSchema } from 'src/purchases/purchases.schema';
 import { Invoice, InvoiceSchema } from 'src/invoice/invoice.schema';
+import { StockFlowModule } from 'src/stock-flow/stock-flow.module';
 
 @Module({
   imports: [
+    StockFlowModule,
     MongooseModule.forFeature([
       { name: Sale.name, schema: SaleSchema },
       { name: Product.name, schema: ProductSchema },

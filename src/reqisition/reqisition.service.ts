@@ -5,18 +5,47 @@ import { Reqisition } from './reqisition.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { errorLog } from 'src/helpers/do_loggers';
 import { Model } from 'mongoose';
+import { DepartmentService } from 'src/department/department.service';
+import { fork } from 'node:child_process';
+import { DepartmentHistoryService } from 'src/department/department.history.service';
 
 @Injectable()
 export class ReqisitionService {
   constructor(
-    @InjectModel(Reqisition.name) private readonly reqisitionModel: Model<Reqisition>
+    @InjectModel(Reqisition.name) private readonly reqisitionModel: Model<Reqisition>,
+    private readonly departmentService: DepartmentHistoryService
   ) { }
   async create(createReqisitionDto: any, req: any) {
     try {
       createReqisitionDto.location = req.user.location
       createReqisitionDto.initiator = req.user.username
       const newReqisition = await this.reqisitionModel.create(createReqisitionDto)
-      return newReqisition;
+      const groupedProducts: { [key: string]: { name: string, departmentId: string, products: any[] } } = {};
+      for (const product of createReqisitionDto.products) {
+        const fromId = product.fromName._id;
+        const fromTitle = product.fromName.title;
+        product.product = product.productId
+        delete product.fromName
+        if (!groupedProducts[fromId]) {
+          groupedProducts[fromId] = { name: fromTitle, departmentId: fromId, products: [] };
+        }
+        groupedProducts[fromId].products.push(product);
+      }
+      const groupedArray = Object.values(groupedProducts);
+
+      for (const element of groupedArray) {
+        const newData = {
+          from: element.name,
+          to: createReqisitionDto.to,
+          products: element.products,
+          fromId: element.departmentId,
+          closer: req.user.username
+        }
+        await this.departmentService.createHistory(newData, req);
+      }
+
+
+      return { 'newReqisition': '' };
     } catch (error) {
       errorLog(`Error creating  reqisition: ${error}`, "ERROR")
       throw new BadRequestException(error);

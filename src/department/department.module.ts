@@ -18,6 +18,6 @@ import { StockFlowModule } from 'src/stock-flow/stock-flow.module';
 
   controllers: [DepartmentController, DepartmentHistortyController],
   providers: [DepartmentService, DepartmentHistoryService],
-  exports: [MongooseModule, DepartmentService]
+  exports: [MongooseModule, DepartmentService, DepartmentHistoryService]
 })
 export class DepartmentModule { }

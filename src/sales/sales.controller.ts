@@ -69,4 +69,11 @@ export class SalesController {
         return this.salesService.delete(id, req);
     }
 
+
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
+    @Get('all-sells-data')
+    totalSalesData(@Query() query: QueryDto, @Req() req: any) {
+        return this.salesService.calculateSalesTotals(query, req);
+    }
+
 }

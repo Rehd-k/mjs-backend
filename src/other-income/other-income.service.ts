@@ -1,60 +1,61 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage } from 'mongoose';
-import { Expenses } from './expenses.schema';
 import { QueryDto } from 'src/product/query.dto';
 import { errorLog } from 'src/helpers/do_loggers';
 import { CashflowService } from 'src/cashflow/cashflow.service';
+import { OtherIncome } from './other-income.entity';
 
 @Injectable()
-export class ExpensesService {
-    constructor(@InjectModel(Expenses.name) private readonly expenseModel: Model<Expenses>, private cashFlowService: CashflowService) { }
+export class OtherIncomeService {
+    constructor(@InjectModel(OtherIncome.name) private readonly otherIncomeModel: Model<OtherIncome>, private cashFlowService: CashflowService) { }
 
-    async createExpense(body: any, req: any) {
+
+    async createotherIncome(body: any, req: any) {
         try {
             body.date = new Date(body.date)
             body.initiator = req.user.username
             body.location = req.user.location;
-            const newExpenses = await this.expenseModel.create(body);
-            return newExpenses
+            const newOtherIncome = await this.otherIncomeModel.create(body);
+            return newOtherIncome
         } catch (error) {
-            errorLog(`error creating expenses ${error}`, "ERROR")
+            errorLog(`error creating otherIncome ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
 
 
     }
 
-    async updateExpense(id: string, updateData: Partial<Expenses>) {
+    async updateotherIncome(id: string, updateData: Partial<OtherIncome>) {
         try {
-            const expense = await this.expenseModel.findById(id);
-            if (!expense) {
-                throw new BadRequestException(`Expense with id ${id} not found`);
+            const otherIncome = await this.otherIncomeModel.findById(id);
+            if (!otherIncome) {
+                throw new BadRequestException(`otherIncome with id ${id} not found`);
             }
             for (const key in updateData) {
                 if (updateData.hasOwnProperty(key)) {
-                    expense[key] = updateData[key];
+                    otherIncome[key] = updateData[key];
                 }
             }
-            return await expense.save();
+            return await otherIncome.save();
         } catch (error) {
-            errorLog(`error updating expenses ${error}`, "ERROR")
+            errorLog(`error updating otherIncome ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
 
     }
 
-    async deleteExpense(id: string) {
+    async deleteotherIncome(id: string) {
         try {
-            return await this.expenseModel.findByIdAndDelete(id);
+            return await this.otherIncomeModel.findByIdAndDelete(id);
         } catch (error) {
-            errorLog(`error deleting expenses ${error}`, "ERROR")
+            errorLog(`error deleting otherIncome ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
 
     }
 
-    async getExpenses(query: QueryDto, req: any) {
+    async getOtherIncome(query: QueryDto, req: any) {
         const {
             filter = '{}',
             sort = '{}',
@@ -85,22 +86,22 @@ export class ExpensesService {
             if (parsedFilter.category == 'category' || parsedFilter.category == 'All') {
                 delete parsedFilter.category
             }
-            const dbExpenses = await this.expenseModel.find({ ...parsedFilter, location: req.user.location })
+            const dbOtherIncome = await this.otherIncomeModel.find({ ...parsedFilter, location: req.user.location })
                 .sort(parsedSort)
                 .skip(Number(skip))
                 .limit(Number(limit))
                 .select(select)
                 .exec()
-            const expensesCount = await this.expenseModel.countDocuments({ ...parsedFilter, location: req.user.location })
-            const result = { expense: dbExpenses, expensesCount: expensesCount }
+            const otherIncomeCount = await this.otherIncomeModel.countDocuments({ ...parsedFilter, location: req.user.location })
+            const result = { otherIncome: dbOtherIncome, otherIncomeCount: otherIncomeCount }
             return result;
         } catch (error) {
-            errorLog(`error reading all expenses ${error}`, "ERROR")
+            errorLog(`error reading all otherIncome ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
     }
 
-    async getTotalExpenses(query: QueryDto, req: any) {
+    async getTotalOtherIncome(query: QueryDto, req: any) {
         try {
             const {
                 startDate,
@@ -174,7 +175,7 @@ export class ExpensesService {
                             { $sort: { totalSpent: -1 } }, // Sort by the most spent
                             { $limit: 1 } // Take only the top one
                         ],
-                        // Pipeline (C): Calculates the total expenses for the entire current month.
+                        // Pipeline (C): Calculates the total otherIncome for the entire current month.
                         monthlyTotal: [
                             {
                                 $match: {
@@ -220,15 +221,15 @@ export class ExpensesService {
                 }
             ];
 
-            return this.expenseModel.aggregate(pipeline);
+            return this.otherIncomeModel.aggregate(pipeline);
         } catch (error) {
-            errorLog(`error getting  total expenses ${error}`, "ERROR")
+            errorLog(`error getting  total otherIncome ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
 
     }
 
-    async getExpenseData(option: string, req: any): Promise<any> {
+    async getotherIncomeData(option: string, req: any): Promise<any> {
         let now = new Date(new Date().getTime() + 60 * 60 * 1000);
         let startDate, endDate, groupBy;
 
@@ -327,80 +328,14 @@ export class ExpensesService {
                 throw new Error("Invalid option");
         }
 
-        const expenseData = await this.expenseModel.aggregate([
+        const otherIncomeData = await this.otherIncomeModel.aggregate([
             { $match: { date: { $gte: startDate, $lte: endDate }, location: req.user.location } },
-            { $group: { _id: groupBy, totalExpenses: { $sum: "$amount" } } },
+            { $group: { _id: groupBy, totalOtherIncome: { $sum: "$amount" } } },
             { $sort: { "_id": 1 } },
-            { $project: { _id: 0, for: "$_id.for", totalExpenses: 1 } }
+            { $project: { _id: 0, for: "$_id.for", totalOtherIncome: 1 } }
         ]);
 
-        return expenseData;
+        return otherIncomeData;
     };
-
-    // Add this new method to the ExpensesService class
-
-    async getExpensesByCategory(query: any, req: any) {
-        const {
-            filter = '{}',
-            startDate,
-            endDate
-        } = query;
-        try {
-            if (!startDate || !endDate) {
-                throw new BadRequestException('Start date and end date are required');
-            }
-            const parsedFilter = JSON.parse(filter);
-
-            // Create date filter if provided
-            let dateFilter = {};
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
-
-            dateFilter = {
-                transactionDate: {
-                    $gte: start,
-                    $lte: end
-                }
-            };
-
-
-            const categoryExpenses = await this.expenseModel.aggregate([
-                {
-                    $match: {
-                        // date: { $gte: start, $lte: end },
-                        // location: req.user.location,
-                        approved: true // Only include approved expenses
-                    }
-                },
-                {
-                    $group: {
-                        _id: '$category',
-                        totalAmount: { $sum: '$amount' }
-                    }
-                },
-                {
-                    $project: {
-                        _id: 0,
-                        category: '$_id',
-                        totalAmount: 1
-                    }
-                },
-                {
-                    $sort: { totalAmount: -1 } // Sort by total amount in descending order
-                }
-            ]);
-            if (!categoryExpenses.length) {
-                return [];
-            }
-            return categoryExpenses;
-        } catch (error) {
-            errorLog(`error getting expenses by category ${error}`, "ERROR");
-            throw new BadRequestException(error);
-        }
-    }
-
 
 }

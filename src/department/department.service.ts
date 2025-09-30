@@ -51,17 +51,43 @@ export class DepartmentService {
   }
 
   async findOne(id: string, query: any) {
+
     try {
       const department = await this.departmentModel.findById(id)
         .select(`title description initiator type ${query.select}`)
         .populate({
-          path: `${query.select}.productId`, // 👈 nested path populate
+          path: `${query.select}.productId`,
           model: `${query.select == 'RawGoods' ? 'RawMaterial' : 'Product'}`,
-          // select: 'title price quantity type servingPrice cost servingQuantity',
         })
         .exec();
+      console.log(department)
       return department;
     } catch (error) {
+      errorLog(`Error getting one department: ${error}`, "ERROR")
+      throw new NotFoundException(`Error getting one department: ${error.message}`);
+    }
+  }
+
+  async findOneSelectBoth(id: string) {
+    try {
+      const department = await this.departmentModel.findById(id)
+        .populate({
+          path: `RawGoods.productId`,
+          model: `RawMaterial`,
+          select: 'title'
+        })
+        .populate({
+          path: `finishedGoods.productId`,
+          model: `Product`,
+          select: 'title'
+        })
+
+
+        .exec();
+      console.log(department)
+      return department;
+    } catch (error) {
+      console.log(error)
       errorLog(`Error getting one department: ${error}`, "ERROR")
       throw new NotFoundException(`Error getting one department: ${error.message}`);
     }
@@ -274,7 +300,7 @@ export class DepartmentService {
             initiator: req.user.username,
           })
         }
-        await this.stockFlowService.create('Stock Movement', productId.title, toSend, sender._id, receiver._id, 'contra', new Date(Date.now()), req.user.username, req.user.location)
+        await this.stockFlowService.create('Stock Movement', productId._id, toSend, sender._id, receiver._id, 'contra', new Date(Date.now()), req.user.username, req.user.location)
       }
 
       await Promise.all([sender.save(), receiver.save()]);

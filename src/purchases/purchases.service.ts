@@ -1,4 +1,4 @@
-import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
 import { Purchase } from './purchases.schema';
@@ -52,12 +52,14 @@ export class PurchasesService {
 
                     return res.productId.toString() == product._id
                 })
-
+                console.log(departmentProduct)
                 if (departmentProduct == -1) {
                     mainDepartment.finishedGoods.push(
                         {
                             productId: new mongoose.Types.ObjectId(product._id as string),
-                            quantity: Number(createdPurchase.quantity)
+                            quantity: Number(createdPurchase.quantity),
+                            unitCost: Number(createdPurchase.totalPayable) / Number(createdPurchase.quantity),
+                            cost: Number(createdPurchase.totalPayable)
                         }
                     )
                 } else {
@@ -65,7 +67,7 @@ export class PurchasesService {
                 }
 
                 await Promise.all([mainDepartment.save(), product.save()]);
-                await this.stockFlowService.create('Purchases', product.title, Number(createdPurchase.quantity), 'Supplier', mainDepartment._id, 'in', new Date(Date.now()), req.user.username, req.user.location)
+                await this.stockFlowService.create('Purchases', new Types.ObjectId(product._id as string), Number(createdPurchase.quantity), null, mainDepartment._id, 'in', new Date(Date.now()), req.user.username, req.user.location)
 
             }
             const order = await createdPurchase.save();
@@ -399,76 +401,89 @@ export class PurchasesService {
     }
 
     async doDamagedGood(id: string, updatePurchaseDto: any, req: any) {
-        const product = await this.productService.findOne(updatePurchaseDto.productId);
-        const purchace = await this.purchaseModel.findById(id);
-        const department = await this.departmentModel.findOne({ _id: updatePurchaseDto.from })
-        if (!product || !purchace || !department) {
-            throw new BadRequestException('Not found');
-        }
-        const departmentProduct = department.finishedGoods.findIndex((res) => {
-            return res.productId.toString() == product._id
-        })
-        if (departmentProduct == -1) {
-            throw new BadRequestException("Product Dosn't Exist in this Department");
-        } else {
-            if (department.finishedGoods[departmentProduct].quantity >= Number(updatePurchaseDto.quantity)) {
-                department.finishedGoods[departmentProduct].quantity = department.finishedGoods[departmentProduct].quantity - Number(updatePurchaseDto.quantity)
-            } else {
-                throw new BadRequestException("Not Enough Product TO Be Returned");
+
+        try {
+            const product = await this.productService.findOne(updatePurchaseDto.productId);
+            const purchace = await this.purchaseModel.findById(id);
+            const department = await this.departmentModel.findOne({ _id: updatePurchaseDto.from })
+            if (!product || !purchace || !department) {
+                throw new BadRequestException('Not found');
             }
+            const departmentProduct = department.finishedGoods.findIndex((res) => {
+                return res.productId.toString() == product._id
+            })
+            if (departmentProduct == -1) {
+                throw new BadRequestException("Product Dosn't Exist in this Department");
+            } else {
+                if (department.finishedGoods[departmentProduct].quantity >= Number(updatePurchaseDto.quantity)) {
+                    department.finishedGoods[departmentProduct].quantity = department.finishedGoods[departmentProduct].quantity - Number(updatePurchaseDto.quantity)
+                } else {
+                    throw new BadRequestException("Not Enough Product TO Be Returned");
+                }
+            }
+            product.quantity = product.quantity - Number(updatePurchaseDto.quantity);
+            product.lowStock = product.quantity <= product.roq;
+            purchace.quantity = purchace.quantity - Number(updatePurchaseDto.quantity);
+
+
+            delete updatePurchaseDto.productId;
+            delete updatePurchaseDto._id;
+            purchace.damagedGoods.push(updatePurchaseDto);
+            const result = await Promise.all([
+                product.save(),
+                purchace.save(),
+                department.save()
+            ]);
+            await this.stockFlowService.create('Damaged Goods', new Types.ObjectId(product._id as string), Number(updatePurchaseDto.quantity), department._id, null, 'out', new Date(Date.now()), req.user.username, req.user.location)
+            return result;
+        } catch (error) {
+            errorLog(`Error create new Damaged ${error}`, "ERROR")
+            throw new BadRequestException(error);
         }
-        product.quantity = product.quantity - Number(updatePurchaseDto.quantity);
-        product.lowStock = product.quantity <= product.roq;
-        purchace.quantity = purchace.quantity - Number(updatePurchaseDto.quantity);
 
-
-        delete updatePurchaseDto.productId;
-        delete updatePurchaseDto._id;
-        purchace.damagedGoods.push(updatePurchaseDto);
-        const result = await Promise.all([
-            product.save(),
-            purchace.save(),
-            department.save()
-        ]);
-        await this.stockFlowService.create('Damaged Goods', product.title, Number(updatePurchaseDto.quantity), department._id, 'Damages', 'out', new Date(Date.now()), req.user.username, req.user.location)
-        return result;
     }
 
     async doReturns(id: string, updatePurchaseDto: any, req: any) {
-        const product = await this.productService.findOne(updatePurchaseDto.productId);
-        const purchace = await this.purchaseModel.findById(id);
-        const department = await this.departmentModel.findOne({ _id: updatePurchaseDto.from })
-        if (!product || !purchace || !department) {
-            throw new BadRequestException('Not found');
-        }
-
-        const departmentProduct = department.finishedGoods.findIndex((res) => {
-            return res.productId.toString() == product._id
-        })
-
-        if (departmentProduct == -1) {
-            throw new BadRequestException("Product Dosn't Exist in this Department");
-        } else {
-            if (department.finishedGoods[departmentProduct].quantity >= Number(updatePurchaseDto.quantity)) {
-                department.finishedGoods[departmentProduct].quantity = department.finishedGoods[departmentProduct].quantity - Number(updatePurchaseDto.quantity)
-            } else {
-                throw new BadRequestException("Not Enough Product TO Be Returned");
+        try {
+            const product = await this.productService.findOne(updatePurchaseDto.productId);
+            const purchace = await this.purchaseModel.findById(id);
+            const department = await this.departmentModel.findOne({ _id: updatePurchaseDto.from })
+            if (!product || !purchace || !department) {
+                throw new BadRequestException('Not found');
             }
-        }
-        product.quantity = product.quantity - Number(updatePurchaseDto.quantity);
-        product.lowStock = product.quantity <= product.roq;
-        purchace.quantity = purchace.quantity - Number(updatePurchaseDto.quantity);
 
-        delete updatePurchaseDto.productId;
-        delete updatePurchaseDto._id;
-        purchace.returns.push(updatePurchaseDto);
-        const result = await Promise.all([
-            product.save(),
-            purchace.save(),
-            department.save()
-        ]);
-        await this.stockFlowService.create('Returns Outward', product.title, Number(updatePurchaseDto.quantity), department._id, 'Supplier', 'out', new Date(Date.now()), req.user.username, req.user.location)
-        return result;
+            const departmentProduct = department.finishedGoods.findIndex((res) => {
+                return res.productId.toString() == product._id
+            })
+
+            if (departmentProduct == -1) {
+                throw new BadRequestException("Product Dosn't Exist in this Department");
+            } else {
+                if (department.finishedGoods[departmentProduct].quantity >= Number(updatePurchaseDto.quantity)) {
+                    department.finishedGoods[departmentProduct].quantity = department.finishedGoods[departmentProduct].quantity - Number(updatePurchaseDto.quantity)
+                } else {
+                    throw new BadRequestException("Not Enough Product TO Be Returned");
+                }
+            }
+            product.quantity = product.quantity - Number(updatePurchaseDto.quantity);
+            product.lowStock = product.quantity <= product.roq;
+            purchace.quantity = purchace.quantity - Number(updatePurchaseDto.quantity);
+
+            delete updatePurchaseDto.productId;
+            delete updatePurchaseDto._id;
+            purchace.returns.push(updatePurchaseDto);
+            const result = await Promise.all([
+                product.save(),
+                purchace.save(),
+                department.save()
+            ]);
+            await this.stockFlowService.create('Returns Outward', new Types.ObjectId(product._id as string), Number(updatePurchaseDto.quantity), department._id, null, 'out', new Date(Date.now()), req.user.username, req.user.location)
+            return result;
+        } catch (error) {
+            errorLog(`Error create new returns ${error}`, "ERROR")
+            throw new BadRequestException(error);
+        }
+
     }
 
     async update(id: string, updatePurchaseDto: any, req: any) {
@@ -502,13 +517,15 @@ export class PurchasesService {
                     } else {
                         mainDepartment.finishedGoods.push({
                             productId: new mongoose.Types.ObjectId(product._id as string),
-                            quantity: Number(purchase.quantity)
+                            quantity: Number(purchase.quantity),
+                            cost: Number(purchase.totalPayable),
+                            unitCost: Number(purchase.totalPayable) / Number(purchase.quantity)
                         });
                     }
 
                     await mainDepartment.save();
                     await product.save();
-                    await this.stockFlowService.create('Purchases', product.title, Number(updatePurchaseDto.quantity), 'Supplier', mainDepartment._id, 'in', new Date(Date.now()), req.user.username, req.user.location)
+                    await this.stockFlowService.create('Purchases', new Types.ObjectId(product._id as string), Number(updatePurchaseDto.quantity), null, mainDepartment._id, 'in', new Date(Date.now()), req.user.username, req.user.location)
 
                 }
                 if (key === 'status' && value === 'Not Delivered') {
@@ -621,5 +638,110 @@ export class PurchasesService {
             errorLog(error, "ERROR")
             throw new BadRequestException(error);
         }
+    }
+
+    async pruchasesTotalsData(query: QueryDto, req: any) {
+        try {
+            const {
+                filter = '{}',
+                startDate,
+                endDate
+            } = query;
+            const parsedFilter = JSON.parse(filter);
+            if (!startDate || !endDate) {
+                throw new BadRequestException('Start date and end date are required');
+            }
+            // Create date filter if provided
+            let dateFilter = {};
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+
+            dateFilter = {
+                transactionDate: {
+                    $gte: startDate,
+                    $lte: endDate
+                }
+            };
+
+
+            const result = await this.purchaseModel.aggregate([
+                {
+                    $match: {
+                        ...parsedFilter,
+                        ...dateFilter,
+                        location: req.user.location
+                    }
+                },
+                {
+                    // Stage 1: Calculate the total return cost for each document individually.
+                    $addFields: {
+                        returnCost: {
+                            $multiply: [
+                                { $sum: "$returns.quantity" }, // First, sum the quantities in the 'returns' array
+                                "$price"                         // Then, multiply that sum by the document's 'cost'
+                            ]
+                        }
+                    }
+                },
+                {
+                    // Stage 1: Calculate the total return cost for each document individually.
+                    $addFields: {
+                        damagesCost: {
+                            $multiply: [
+                                { $sum: "$damagedGoods.quantity" }, // First, sum the quantities in the 'returns' array
+                                "$price"                         // Then, multiply that sum by the document's 'cost'
+                            ]
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null, // Group all documents into a single result
+                        totalNetPurchases: {
+                            $sum: "$totalPayable" // Sum the 'totalAmount' from each document
+                        },
+                        totalPurchases: {
+                            $sum: "$total" // Sum the 'totalAmount' from each document
+                        },
+                        totalDiscountReceived: {
+                            $sum: "$discount" // Sum the 'totalAmount' from each document
+                        },
+                        totalDamages: {
+                            // First, sum the 'total' within each document's 'returns' array,
+                            // then sum those results together across all documents.
+                            $sum: '$damagesCost'
+                        },
+
+                        totalReturnsOutward: {
+                            $sum: "$returnCost" // Sum the 'returnCost' field calculated in the previous stage
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0 // Optional: Exclude the default _id field for a cleaner output
+                    }
+                }
+            ])
+            if (!result.length) {
+                return [{
+                    totalNetPurchases: 0,
+                    totalPurchases: 0,
+                    totalDiscountReceived: 0,
+                    totalDamages: 0,
+                    totalReturnsOutward: 0
+                }];
+            }
+            console.log(result)
+            return result[0];
+
+        } catch (error) {
+            errorLog(`Error calculating purchases totals: ${error}`, "ERROR");
+            throw new InternalServerErrorException(error);
+        }
+
     }
 }

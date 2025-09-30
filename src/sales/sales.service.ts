@@ -614,7 +614,7 @@ export class SalesService {
                 await Promise.all([await sale.save(), department.save()])
                 await this.inventoryService.restockProduct(element.productId, element.quantity)
                 await this.inventoryService.deductFromSold(element.productId as any, element.quantity)
-                await this.stockFlowService.create('Returns Inward', element.title, element.quantity, 'sells', element.from, 'in', new Date(Date.now()), req.user.username, req.user.location)
+                await this.stockFlowService.create('Returns Inward', element.productId, element.quantity, null, element.from, 'in', new Date(Date.now()), req.user.username, req.user.location)
             }
 
 
@@ -660,7 +660,6 @@ export class SalesService {
                     _id: null,
                     totalAmount: { $sum: "$products.quantity" },  // Sum of all amounts
                     totalPrice: { $sum: { $multiply: ["$products.price", "$products.quantity"] } },
-
                     sales_by_date: {
                         $push: {
                             date: "$createdAt",
@@ -689,7 +688,77 @@ export class SalesService {
         }
     }
 
+    async calculateSalesTotals(query: QueryDto, req: any) {
+        try {
+            const {
+                filter = '{}',
+                startDate,
+                endDate
+            } = query;
+            const parsedFilter = JSON.parse(filter);
 
+            if (!startDate || !endDate) {
+                throw new BadRequestException('Start date and end date are required');
+            }
+            // Create date filter if provided
+            let dateFilter = {};
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+
+            dateFilter = {
+                transactionDate: {
+                    $gte: start,
+                    $lte: end
+                }
+            };
+
+
+            const result = await this.saleModel.aggregate([
+                {
+                    $match: {
+                        ...parsedFilter,
+                        ...dateFilter,
+                        location: req.user.location
+                    }
+                },
+
+                {
+                    $group: {
+                        _id: null, // Group all documents into a single result
+                        totalSales: {
+                            $sum: "$totalAmount" // Sum the 'totalAmount' from each document
+                        },
+                        totalReturnsInward: {
+                            // First, sum the 'total' within each document's 'returns' array,
+                            // then sum those results together across all documents.
+                            $sum: { $sum: "$returns.total" }
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0 // Optional: Exclude the default _id field for a cleaner output
+                    }
+                }
+
+            ]);
+
+            // Return default values if no results
+            if (!result.length) {
+                return {
+                    totalSales: 0, totalReturns: 0
+                };
+            }
+            console.log(result)
+            return result[0];
+        } catch (error) {
+            errorLog(`Error calculating sales totals: ${error}`, "ERROR");
+            throw new InternalServerErrorException(error);
+        }
+    }
 }
 
 

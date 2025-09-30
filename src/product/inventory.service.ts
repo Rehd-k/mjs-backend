@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, forwardRef, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Product } from './product.schema';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { PurchasesService } from 'src/purchases/purchases.service';
@@ -85,7 +85,7 @@ export class InventoryService {
         if (product.quantity <= product.roq) {
             await this.notifyAdminLowStock(product, req);
         }
-        await this.stockFlowService.create(reason, product.title, quantity, department._id, to, 'out', new Date(Date.now()), req.user.username, req.user.location)
+        await this.stockFlowService.create(reason, new Types.ObjectId(product._id as string), quantity, department._id, to, 'out', new Date(Date.now()), req.user.username, req.user.location)
         return Promise.all([department.save(), product.save()]);
     }
 

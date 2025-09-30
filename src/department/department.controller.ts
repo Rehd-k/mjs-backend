@@ -26,6 +26,14 @@ export class DepartmentController {
     return this.departmentService.findAll(req, query);
   }
 
+  @Get('for-both/:id')
+  findAllForBoth(
+    @Param('id') param: string
+  ) {
+    return this.departmentService.findOneSelectBoth(param);
+  }
+
+
   @Get(':id')
   async findOne(@Param('id') id: string, @Query() query: any) {
 

@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Customer } from 'src/customer/customer.schema';
 import { Expenses } from 'src/expense/expenses.schema';
+import { errorLog } from 'src/helpers/do_loggers';
 import { Invoice } from 'src/invoice/invoice.schema';
 import { Product } from 'src/product/product.schema';
 import { QueryDto } from 'src/product/query.dto';
@@ -367,114 +368,120 @@ export class AnalyticsService {
 
 
   async getSalesData(option: string, req: any): Promise<any> {
-    const now = new Date();
-    let startDate, endDate, groupBy;
+    try {
+      const now = new Date();
+      let startDate, endDate, groupBy;
 
-    switch (option) {
-      case "Today":
+      switch (option) {
+        case "Today":
 
 
-        startDate = new Date(now.setHours(0, 0, 0, 0));
-        endDate = new Date(now.setHours(24, 59, 59, 999));
-        groupBy = {
-          for: {
-            $add: [
-              {
-                $divide: [
-                  { $subtract: [{ $hour: "$transactionDate" }, { $mod: [{ $hour: "$transactionDate" }, 2] }] },
-                  2
-                ]
-              },
-              1
-            ]
-          }
-        };
-        break;
-      case "This Week":
-        startDate = new Date(now.setDate(now.getDate() - now.getDay()));
-        endDate = new Date(now.setDate(now.getDate() - now.getDay() + 6));
-        groupBy = { for: { $dayOfWeek: "$transactionDate" } };
-        break;
-      case "Last 7 Days":
-        startDate = new Date();
-        startDate.setDate(startDate.getDate() - 6);
-        startDate.setHours(0, 0, 0, 0);
+          startDate = new Date(now.setHours(0, 0, 0, 0));
+          endDate = new Date(now.setHours(24, 59, 59, 999));
+          groupBy = {
+            for: {
+              $add: [
+                {
+                  $divide: [
+                    { $subtract: [{ $hour: "$transactionDate" }, { $mod: [{ $hour: "$transactionDate" }, 2] }] },
+                    2
+                  ]
+                },
+                1
+              ]
+            }
+          };
+          break;
+        case "This Week":
+          startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+          endDate = new Date(now.setDate(now.getDate() - now.getDay() + 6));
+          groupBy = { for: { $dayOfWeek: "$transactionDate" } };
+          break;
+        case "Last 7 Days":
+          startDate = new Date();
+          startDate.setDate(startDate.getDate() - 6);
+          startDate.setHours(0, 0, 0, 0);
 
-        endDate = new Date();
-        endDate.setHours(24, 59, 59, 999);
+          endDate = new Date();
+          endDate.setHours(24, 59, 59, 999);
 
-        groupBy = {
-          for: {
-            $subtract: [
-              {
-                $add: [
-                  {
-                    $dateDiff: {
-                      startDate: startDate,
-                      endDate: "$transactionDate",
-                      unit: "day"
-                    }
-                  },
-                  1
-                ]
-              },
-              1
-            ]
-          }
-        };
-        break;
-      case "Last Week":
-        startDate = new Date(now.setDate(now.getDate() - now.getDay() - 7));
-        endDate = new Date(now.setDate(now.getDate() - now.getDay() - 1));
-        groupBy = { for: { $dayOfWeek: "$transactionDate" } };
-        break;
-      case "This Month":
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        groupBy = { for: { $dayOfMonth: "$transactionDate" } };
-        break;
-      case "Last Month":
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        groupBy = { for: { $dayOfMonth: "$transactionDate" } };
-        break;
-      case "First Quarter":
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 3, 0);
-        groupBy = { for: { $month: "$transactionDate" } };
-        break;
-      case "Second Quarter":
-        startDate = new Date(now.getFullYear(), 3, 1);
-        endDate = new Date(now.getFullYear(), 6, 0);
-        groupBy = { for: { $month: "$transactionDate" } };
-        break;
-      case "Third Quarter":
-        startDate = new Date(now.getFullYear(), 6, 1);
-        endDate = new Date(now.getFullYear(), 9, 0);
-        groupBy = { for: { $month: "$transactionDate" } };
-        break;
-      case "Fourth Quarter":
-        startDate = new Date(now.getFullYear(), 9, 1);
-        endDate = new Date(now.getFullYear(), 12, 0);
-        groupBy = { for: { $month: "$transactionDate" } };
-        break;
-      case "This Year":
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
-        groupBy = { for: { $month: "$transactionDate" } };
-        break;
-      default:
-        throw new Error("Invalid option");
+          groupBy = {
+            for: {
+              $subtract: [
+                {
+                  $add: [
+                    {
+                      $dateDiff: {
+                        startDate: startDate,
+                        endDate: "$transactionDate",
+                        unit: "day"
+                      }
+                    },
+                    1
+                  ]
+                },
+                1
+              ]
+            }
+          };
+          break;
+        case "Last Week":
+          startDate = new Date(now.setDate(now.getDate() - now.getDay() - 7));
+          endDate = new Date(now.setDate(now.getDate() - now.getDay() - 1));
+          groupBy = { for: { $dayOfWeek: "$transactionDate" } };
+          break;
+        case "This Month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          groupBy = { for: { $dayOfMonth: "$transactionDate" } };
+          break;
+        case "Last Month":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+          groupBy = { for: { $dayOfMonth: "$transactionDate" } };
+          break;
+        case "First Quarter":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 3, 0);
+          groupBy = { for: { $month: "$transactionDate" } };
+          break;
+        case "Second Quarter":
+          startDate = new Date(now.getFullYear(), 3, 1);
+          endDate = new Date(now.getFullYear(), 6, 0);
+          groupBy = { for: { $month: "$transactionDate" } };
+          break;
+        case "Third Quarter":
+          startDate = new Date(now.getFullYear(), 6, 1);
+          endDate = new Date(now.getFullYear(), 9, 0);
+          groupBy = { for: { $month: "$transactionDate" } };
+          break;
+        case "Fourth Quarter":
+          startDate = new Date(now.getFullYear(), 9, 1);
+          endDate = new Date(now.getFullYear(), 12, 0);
+          groupBy = { for: { $month: "$transactionDate" } };
+          break;
+        case "This Year":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+          groupBy = { for: { $month: "$transactionDate" } };
+          break;
+        default:
+          throw new Error("Invalid option");
+      }
+
+      const sales = await this.saleModel.aggregate([
+        { $match: { transactionDate: { $gte: startDate, $lte: endDate }, location: req.user.location } },
+        { $group: { _id: groupBy, totalSales: { $sum: "$totalAmount" } } },
+        { $sort: { "_id": 1 } },
+        { $project: { _id: 0, for: "$_id.for", totalSales: 1 } }
+      ]);
+
+      return sales;
+    } catch (error) {
+      errorLog(`Error Getting Sales Chart Data ${error}`, "ERROR")
+      throw new InternalServerErrorException(error.message);
     }
 
-    const sales = await this.saleModel.aggregate([
-      { $match: { transactionDate: { $gte: startDate, $lte: endDate }, location: req.user.location } },
-      { $group: { _id: groupBy, totalSales: { $sum: "$totalAmount" } } },
-      { $sort: { "_id": 1 } },
-      { $project: { _id: 0, for: "$_id.for", totalSales: 1 } }
-    ]);
-
-    return sales;
   };
 
   /**

@@ -11,9 +11,11 @@ export class UserService {
     constructor(@InjectModel(User.name) private readonly userModel: Model<User>) { }
 
     async create(user: any) {
+        console.log(user)
         try {
-            if (user.role === 'god')
+            if (user.role === 'god') {
                 user.initiator = 'god'
+            }
             return await this.userModel.create(user);
         } catch (error) {
             if (error && error.code === 11000) {
@@ -68,7 +70,7 @@ export class UserService {
 
     async getOneById(id: string) {
         try {
-            const user = await  this.userModel.findById(id);
+            const user = await this.userModel.findById(id);
             console.log(user)
             return user;
         } catch (error) {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { SupplierService } from './supplier.service';
 import { Types } from 'mongoose';
 import { QueryDto } from 'src/product/query.dto';
@@ -49,5 +49,10 @@ export class SupplierController {
     @Get(':id')
     async getSupplierDetails(@Param('id') supplierId: string) {
         return this.supplierService.getSupplierDetails(supplierId);
+    }
+
+    @Patch(':id')
+    async updateSuppliersInfo(@Param('id') supplierId: string, @Body() body: any) {
+        return this.supplierService.updateSuplierById(supplierId, body);
     }
 }

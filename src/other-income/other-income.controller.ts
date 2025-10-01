@@ -10,7 +10,7 @@ import { OtherIncomeCategoryService } from './other-income..service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Accounting)
-@Controller('expense')
+@Controller('income')
 export class OtherIncomeController {
   constructor(private readonly otherIncomeService: OtherIncomeService, private readonly otherIncomeCategoryService: OtherIncomeCategoryService) { }
 
@@ -50,23 +50,29 @@ export class OtherIncomeController {
 
 
 
-  @Post('/category')
+  @Post('/otherIncome')
   async createOtherIncomeCategory(@Body() body: any, @Req() req: any) {
     return this.otherIncomeCategoryService.create(body, req);
   }
 
-  @Patch('/category/update/:id')
+  @Patch('/otherIncome/update/:id')
   async updateExpensCategory(@Param('id') id: string, @Body() body: any) {
     return this.otherIncomeCategoryService.update(id, body);
   }
 
-  @Delete('/category/delete/:id')
+  @Delete('/otherIncome/delete/:id')
   async deleteOtherIncomeCategory(@Param('id') id: string) {
     return this.otherIncomeCategoryService.delete(id);
   }
 
-  @Get('/category')
+  @Get('/otherIncome')
   async getOtherIncomeCategories(@Req() req: any) {
     return this.otherIncomeCategoryService.findAll(req);
+  }
+
+
+  @Get('/otherIncomeTotal')
+  async getOtherIncomeTotal(@Query() query: QueryDto, @Req() req: any) {
+    return this.otherIncomeService.calculateOtherIncomeTotals(query, req);
   }
 }

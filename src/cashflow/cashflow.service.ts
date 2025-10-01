@@ -26,67 +26,35 @@ export class CashflowService {
     initiator: string,
     location: string
   ) {
-    let ids: { cash: any | null, bank: any | null } = {
-      cash: null,
-      bank: null
-    };
+  
     try {
       // Get latest payment to derive current balances
-      if (cash > 0) {
-        let amount = cash;
-        const lastPayment = await this.cashflowModel.findOne({
-          moneyFrom: moneyFrom
-        }).sort({ createdAt: -1 }).lean();
-
-        const prevBalance = lastPayment?.balanceAfter ?? 0;
-
-        // Apply transaction
-        const balanceAfter = type === 'in' ? prevBalance + amount : prevBalance - amount;
-
-        const payment = new this.cashflowModel({
-          title,
-          paymentFor,
-          amount,
-          type,
-          moneyFrom,
-          transactionDate,
-          initiator,
-          location,
-          balanceAfter
-        });
-
-        let id = await payment.save();
-        ids.cash = (id)
-      }
 
 
-      if (bank > 0) {
-        let amount = bank;
-        const lastPayment = await this.cashflowModel.findOne({
-          moneyFrom: moneyFrom
-        }).sort({ createdAt: -1 }).lean();
 
-        const prevBalance = lastPayment?.balanceAfter ?? 0;
+      let amount = bank + cash;
+      const lastPayment = await this.cashflowModel.findOne({
+        moneyFrom: moneyFrom
+      }).sort({ createdAt: -1 }).lean();
 
-        // Apply transaction
-        const balanceAfter = type === 'in' ? prevBalance + amount : prevBalance - amount;
+      const prevBalance = lastPayment?.balanceAfter ?? 0;
 
-        const payment = new this.cashflowModel({
-          title,
-          paymentFor,
-          amount,
-          type,
-          moneyFrom,
-          transactionDate,
-          initiator,
-          location,
-          balanceAfter
-        });
+      // Apply transaction
+      const balanceAfter = type === 'in' ? prevBalance + amount : prevBalance - amount;
 
-        let id = await payment.save();
-        ids.bank = id
-      }
-      return ids;
+      const payment = new this.cashflowModel({
+        title,
+        paymentFor,
+        amount,
+        type,
+        moneyFrom,
+        transactionDate,
+        initiator,
+        location,
+        balanceAfter
+      });
+
+      return await payment.save();
 
     } catch (error) {
       errorLog(`Error creating Payment ${error}`, "ERROR");

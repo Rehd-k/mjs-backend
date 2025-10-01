@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage } from 'mongoose';
 import { QueryDto } from 'src/product/query.dto';
@@ -19,7 +19,7 @@ export class OtherIncomeService {
             const newOtherIncome = await this.otherIncomeModel.create(body);
             return newOtherIncome
         } catch (error) {
-            errorLog(`error creating otherIncome ${error}`, "ERROR")
+            errorLog(`error creating other Income ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
 
@@ -30,7 +30,7 @@ export class OtherIncomeService {
         try {
             const otherIncome = await this.otherIncomeModel.findById(id);
             if (!otherIncome) {
-                throw new BadRequestException(`otherIncome with id ${id} not found`);
+                throw new BadRequestException(`other Income with id ${id} not found`);
             }
             for (const key in updateData) {
                 if (updateData.hasOwnProperty(key)) {
@@ -39,7 +39,7 @@ export class OtherIncomeService {
             }
             return await otherIncome.save();
         } catch (error) {
-            errorLog(`error updating otherIncome ${error}`, "ERROR")
+            errorLog(`error updating other Income ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
 
@@ -337,5 +337,72 @@ export class OtherIncomeService {
 
         return otherIncomeData;
     };
+
+    async calculateOtherIncomeTotals(query: QueryDto, req: any) {
+        try {
+            const {
+                filter = '{}',
+                startDate,
+                endDate
+            } = query;
+            const parsedFilter = JSON.parse(filter);
+
+            if (!startDate || !endDate) {
+                throw new BadRequestException('Start date and end date are required');
+            }
+            // Create date filter if provided
+            let dateFilter = {};
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+
+            dateFilter = {
+                transactionDate: {
+                    $gte: start,
+                    $lte: end
+                }
+            };
+
+
+            const result = await this.otherIncomeModel.aggregate([
+                {
+                    $match: {
+                        ...parsedFilter,
+                        ...dateFilter,
+                        location: req.user.location
+                    }
+                },
+
+                {
+                    $group: {
+                        _id: null, // Group all documents into a single result
+                        totalIncome: {
+                            $sum: "$amount" // Sum the 'totalAmount' from each document
+                        },
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0 // Optional: Exclude the default _id field for a cleaner output
+                    }
+                }
+
+            ]);
+
+            // Return default values if no results
+            if (!result.length) {
+                return {
+                    totalIncome: 0
+                };
+            }
+            console.log(result)
+            return result[0];
+        } catch (error) {
+            errorLog(`Error calculating sales totals: ${error}`, "ERROR");
+            throw new InternalServerErrorException(error);
+        }
+    }
 
 }

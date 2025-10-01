@@ -128,7 +128,7 @@ export class SupplierService {
         return result[0]
     }
 
-    async addOrder(supplierId: Types.ObjectId, orderId: Types.ObjectId, amountSpent: number, paymentId: Types.ObjectId,): Promise<any> {
+    async addOrder(supplierId: Types.ObjectId, orderId: Types.ObjectId, amountSpent: number, paymentId: Types.ObjectId | null): Promise<any> {
         try {
             const supplier = await this.supplierModel.findById(supplierId);
             if (!supplier) {
@@ -163,7 +163,8 @@ export class SupplierService {
                     status: 1,
                     amountSpent: 1,
                     contactPerson: 1,
-                    address: 1
+                    address: 1,
+                    otherContacts: 1
                 }
             }
 
@@ -174,6 +175,17 @@ export class SupplierService {
             return suppliers[0]
         } catch (error) {
             errorLog(`Error supplier details ${error}`, "ERROR")
+            throw new BadRequestException(error);
+        }
+
+    }
+
+    async updateSuplierById(id: string, data: any) {
+        console.log(data)
+        try {
+            return this.supplierModel.findByIdAndUpdate(id, data, { new: true });
+        } catch (error) {
+            errorLog(`error updating one users ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
 

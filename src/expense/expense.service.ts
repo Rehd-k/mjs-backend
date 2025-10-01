@@ -328,7 +328,7 @@ export class ExpensesService {
         }
 
         const expenseData = await this.expenseModel.aggregate([
-            { $match: { date: { $gte: startDate, $lte: endDate }, location: req.user.location } },
+            { $match: { date: { $gte: startDate, $lte: endDate }, location: req.user.location, approved: true } },
             { $group: { _id: groupBy, totalExpenses: { $sum: "$amount" } } },
             { $sort: { "_id": 1 } },
             { $project: { _id: 0, for: "$_id.for", totalExpenses: 1 } }

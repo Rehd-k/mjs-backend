@@ -71,7 +71,7 @@ export class UserService {
     async getOneById(id: string) {
         try {
             const user = await this.userModel.findById(id);
-            console.log(user)
+
             return user;
         } catch (error) {
             errorLog(`error finding one users ${error}`, "ERROR")
@@ -87,7 +87,15 @@ export class UserService {
             errorLog(`error updating one users ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
+    }
 
+    async getUsersByRole(role: string) {
+        try {
+            return this.userModel.find({ role: role });
+        } catch (error) {
+            errorLog(`error getting users by role ${error}`, "ERROR")
+            throw new BadRequestException(error);
+        }
     }
 
     async deleteOneById(id: string) {

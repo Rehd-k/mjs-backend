@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { RolesGuard } from 'src/helpers/role/roles.guard';
 import { UserService } from './user.service';
 import { Role } from 'src/helpers/enums';
@@ -43,9 +43,8 @@ export class UserController {
         return this.userService.getOneById(id);
     }
 
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.God, Role.Admin)
-    @Put(':id')
+
+    @Patch(':id')
     async updateOneById(@Param('id') id: string, @Body() user: any) {
         return this.userService.updateOneById(id, user);
     }

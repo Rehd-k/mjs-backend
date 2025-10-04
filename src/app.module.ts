@@ -36,6 +36,7 @@ import { StockSnapshotModule } from './stock-snapshot/stock-snapshot.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReqisitionModule } from './reqisition/reqisition.module';
 import { OtherIncomeModule } from './other-income/other-income.module';
+import { FirebaseModule } from './firebase/firebase.module';
 
 @Module({
   imports: [
@@ -97,7 +98,8 @@ import { OtherIncomeModule } from './other-income/other-income.module';
     StockSnapshotModule,
     ScheduleModule.forRoot(),
     ReqisitionModule,
-    OtherIncomeModule
+    OtherIncomeModule,
+    FirebaseModule
   ],
   controllers: [AppController],
   providers: [AppService],

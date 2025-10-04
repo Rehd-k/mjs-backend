@@ -68,6 +68,9 @@ export class User {
     @Prop()
     salary: number;
 
+    @Prop()
+    fcmToken: string;
+
     @Prop({ required: true, minlength: 6 })
     password: string;
 

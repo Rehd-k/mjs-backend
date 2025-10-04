@@ -95,7 +95,7 @@ export class InventoryService {
         this.notificationService.createNotification(
             'LowStock',
             `Product ${product.name} is running low on stock.`,
-            ['Admin'],
+            ['admin'],
             req
         );
     }

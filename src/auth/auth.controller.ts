@@ -21,7 +21,9 @@ export class AuthController {
 
     const user = await this.authService.validateUser(body.username, body.password, body.location);
 
-    return this.authService.login(user);
+    const result = this.authService.login(user);
+    console.log(result);
+    return result
 
   }
 

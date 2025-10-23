@@ -37,6 +37,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ReqisitionModule } from './reqisition/reqisition.module';
 import { OtherIncomeModule } from './other-income/other-income.module';
 import { FirebaseModule } from './firebase/firebase.module';
+import { CartModule } from './cart/cart.module';
 
 @Module({
   imports: [
@@ -99,7 +100,8 @@ import { FirebaseModule } from './firebase/firebase.module';
     ScheduleModule.forRoot(),
     ReqisitionModule,
     OtherIncomeModule,
-    FirebaseModule
+    FirebaseModule,
+    CartModule
   ],
   controllers: [AppController],
   providers: [AppService],

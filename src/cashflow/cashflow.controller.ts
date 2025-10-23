@@ -11,6 +11,7 @@ import { RolesGuard } from 'src/helpers/roles/roles.guard';
 @Controller('cashflow')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting)
+
 export class CashflowController {
   constructor(private readonly cashflowService: CashflowService) { }
 

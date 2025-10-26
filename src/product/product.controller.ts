@@ -20,7 +20,7 @@ export class ProductController {
         return this.productService.create(productDto, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor, Role.Accounting)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor, Role.Accounting, Role.Chef)
     @Get()
     async getAllProducts(
         @Query() query: QueryDto,

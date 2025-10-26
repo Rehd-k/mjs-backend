@@ -9,7 +9,7 @@ import { Roles } from 'src/helpers/role/roles.decorator';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Bar, Role.Cashier, Role.Waiter, Role.Accounting)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Bar, Role.Cashier, Role.Waiter, Role.Accounting, Role.Chef)
 @Controller('purchases')
 export class PurchasesController {
 

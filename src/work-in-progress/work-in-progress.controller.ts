@@ -8,7 +8,7 @@ import { Roles } from 'src/helpers/roles/roles.decorator';
 import { RolesGuard } from 'src/helpers/roles/roles.guard';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Chef)
 @Controller('work-in-progress')
 export class WorkInProgressController {
   constructor(private readonly workInProgressService: WorkInProgressService) { }

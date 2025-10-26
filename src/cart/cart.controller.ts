@@ -10,14 +10,14 @@ import { RolesGuard } from 'src/helpers/roles/roles.guard';
 
 @Controller('cart')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting, Role.Chef)
 
 export class CartController {
   constructor(private readonly cartService: CartService) { }
 
   @Post()
   create(@Body() createCartDto: CreateCartDto, @Req() req: any) {
-   
+
     return this.cartService.create(createCartDto, req);
   }
 

@@ -27,6 +27,9 @@ class CartProduct {
 
     @Prop()
     total: number;
+    
+    @Prop()
+    maxQuantity: number;
 
     @Prop({
         default: false
@@ -47,9 +50,6 @@ const CartProductSchema = SchemaFactory.createForClass(CartProduct);
     }
 })
 export class Cart {
-    @Prop({ type: [CartProductSchema] })
-    products: CartProduct[];
-
     @Prop()
     location: string;
 
@@ -57,9 +57,29 @@ export class Cart {
     initiator: string;
 
     @Prop({
-        default: false
+        default: ''
     })
-    settled: boolean
+    orderNo: string;
+
+
+    @Prop({
+        default: 0
+    })
+    total: number;
+
+
+    @Prop({
+        default: 'pending'
+    })
+    status: string
+
+    @Prop({
+        type: [{ department: String, products: [CartProductSchema] }]
+    })
+    from: {
+        department: string;
+        products: CartProduct[];
+    }[]
 }
 export const CartSchema = SchemaFactory.createForClass(Cart);
 

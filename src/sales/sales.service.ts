@@ -752,7 +752,7 @@ export class SalesService {
                     totalSales: 0, totalReturns: 0
                 };
             }
-            console.log(result)
+ 
             return result[0];
         } catch (error) {
             errorLog(`Error calculating sales totals: ${error}`, "ERROR");

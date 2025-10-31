@@ -80,9 +80,7 @@ export class OtherIncomeService {
             end.setHours(24, 59, 59, 999);
 
             parsedFilter.createdAt = { $gte: start, $lte: end };
-            if (parsedFilter.approved == '') {
-                delete parsedFilter.approved
-            }
+           
             if (parsedFilter.category == 'category' || parsedFilter.category == 'All') {
                 delete parsedFilter.category
             }
@@ -96,7 +94,7 @@ export class OtherIncomeService {
             const result = { otherIncome: dbOtherIncome, otherIncomeCount: otherIncomeCount }
             return result;
         } catch (error) {
-            errorLog(`error reading all otherIncome ${error}`, "ERROR")
+            errorLog(`error reading all other Income ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
     }
@@ -397,7 +395,7 @@ export class OtherIncomeService {
                     totalIncome: 0
                 };
             }
-            console.log(result)
+
             return result[0];
         } catch (error) {
             errorLog(`Error calculating sales totals: ${error}`, "ERROR");

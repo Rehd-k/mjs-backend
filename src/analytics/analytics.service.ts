@@ -95,7 +95,6 @@ export class AnalyticsService {
   async getInventoryReports(req: any): Promise<any> {
     const products = await this.productModel.find({ location: req.user.location });
     const lowStock = products.filter((product) => product.quantity < product.roq);
-
     return {
       currentStock: products.map((product) => ({
         name: product.title,
@@ -113,15 +112,17 @@ export class AnalyticsService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+
+
     const topSellingToday = await this.saleModel.aggregate([
       { $match: { transactionDate: { $gte: today }, location: req.user.location } },
       { $unwind: '$products' },
-      { $group: { _id: { $toObjectId: '$products._id' }, totalSold: { $sum: '$products.quantity' } } },
+      { $group: { _id: { $toObjectId: '$products.productId' }, totalSold: { $sum: '$products.quantity' }, totalRevenue: { $sum: '$products.total' } } },
       { $sort: { totalSold: -1 } },
       { $limit: 5 },
       { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'productDetails' } },
       { $unwind: '$productDetails' },
-      { $project: { _id: 0, title: '$productDetails.title', totalSold: 1 } },
+      { $project: { _id: 0, title: '$productDetails.title', category: '$productDetails.category', totalSold: 1, totalRevenue: 1 } },
     ]);
 
 
@@ -174,14 +175,13 @@ export class AnalyticsService {
 
     // Calculate total expenses
     const expensesResult = await this.expenseModel.aggregate([
-      { $match: { createdAt: { $gte: startDate, $lte: endDate }, location: req.user.location } },
+      { $match: { createdAt: { $gte: startDate, $lte: endDate }, location: req.user.location, approved: true } },
       { $group: { _id: null, totalExpenses: { $sum: '$amount' } } },
     ]);
     const totalExpenses = expensesResult[0]?.totalExpenses || 0;
 
     // Calculate profit or loss
     const profitOrLoss = totalRevenue - totalExpenses;
-
     return {
       totalRevenue,
       totalExpenses,

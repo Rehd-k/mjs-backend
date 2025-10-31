@@ -14,6 +14,8 @@ export type DepartmentDocument = Department & Document;
     }
 })
 export class DepartmentProduct {
+    @Prop()
+    title: string
     @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true })
     productId: Types.ObjectId;
 

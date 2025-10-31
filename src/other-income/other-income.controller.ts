@@ -10,7 +10,7 @@ import { OtherIncomeCategoryService } from './other-income..service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Accounting)
-@Controller('income')
+@Controller('otherIncome')
 export class OtherIncomeController {
   constructor(private readonly otherIncomeService: OtherIncomeService, private readonly otherIncomeCategoryService: OtherIncomeCategoryService) { }
 
@@ -50,22 +50,22 @@ export class OtherIncomeController {
 
 
 
-  @Post('/otherIncome')
+  @Post('/category')
   async createOtherIncomeCategory(@Body() body: any, @Req() req: any) {
     return this.otherIncomeCategoryService.create(body, req);
   }
 
-  @Patch('/otherIncome/update/:id')
+  @Patch('/category/update/:id')
   async updateExpensCategory(@Param('id') id: string, @Body() body: any) {
     return this.otherIncomeCategoryService.update(id, body);
   }
 
-  @Delete('/otherIncome/delete/:id')
+  @Delete('/category/delete/:id')
   async deleteOtherIncomeCategory(@Param('id') id: string) {
     return this.otherIncomeCategoryService.delete(id);
   }
 
-  @Get('/otherIncome')
+  @Get('/category')
   async getOtherIncomeCategories(@Req() req: any) {
     return this.otherIncomeCategoryService.findAll(req);
   }

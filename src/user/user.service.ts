@@ -11,7 +11,7 @@ export class UserService {
     constructor(@InjectModel(User.name) private readonly userModel: Model<User>) { }
 
     async create(user: any) {
-        console.log(user)
+
         try {
             if (user.role === 'god') {
                 user.initiator = 'god'
@@ -71,6 +71,18 @@ export class UserService {
     async getOneById(id: string) {
         try {
             const user = await this.userModel.findById(id);
+
+            return user;
+        } catch (error) {
+            errorLog(`error finding one users ${error}`, "ERROR")
+            throw new BadRequestException(error);
+        }
+
+    }
+
+    async findOne(query: any) {
+        try {
+            const user = await this.userModel.findOne(query);
 
             return user;
         } catch (error) {

@@ -140,7 +140,7 @@ export class StockFlowService {
         .limit(Number(limit))
         .select(select)
         .exec();
-      console.log(stockFlow)
+
       return stockFlow;
     } catch (error) {
       errorLog(`Error finding all stock flows: ${error}`, "ERROR");

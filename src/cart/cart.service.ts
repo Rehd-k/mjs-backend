@@ -14,7 +14,7 @@ export class CartService {
   ) { }
 
   async create(createCartDto: any, req) {
-    console.log(createCartDto)
+
 
     const grouped = (createCartDto.cart || []).reduce((acc, item) => {
       const key = item.from;
@@ -33,12 +33,37 @@ export class CartService {
     const data = {
       location: req.user.location,
       initiator: req.user.username,
+      initiatorId: req.user.sub,
       from: groups,
       total: Number(createCartDto.total),
       orderNo: Math.floor(1000 + Math.random() * 90000).toString(),
     }
-    console.log(data);
+
     return await this.cartModel.create(data)
+  }
+
+  async updateOrderFromWaiter(createCartDto: any) {
+    const cart = await this.cartModel.findById(createCartDto._id);
+    if (!cart)
+      throw new NotFoundException(`Cart with ID ${createCartDto._id} not found`);
+    const grouped = (createCartDto.cart || []).reduce((acc, item) => {
+      const key = item.from;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    const groups: { department: string; products: any[] }[] = Object.entries(grouped).map(([department, products]) => ({
+      department,
+      products: products as any[],
+    }));
+
+
+    cart!.from = groups;
+    cart!.total = Number(createCartDto.total);
+
+
+    return await cart.save();
   }
 
   async findAll(query: QueryDto, req: any) {
@@ -113,7 +138,7 @@ export class CartService {
       }
 
       const carts = await this.cartModel.aggregate(pipeline).exec();
-      console.log(carts)
+
       return carts;
 
     } catch (error) {

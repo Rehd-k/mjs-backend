@@ -22,19 +22,26 @@ export class FirebaseService {
             notification: { title, body },
             token,
         };
-        console.log(message)
+   
+
         try {
             await admin.messaging().send(message);
-            console.log('Notification sent');
+
         } catch (error) {
             console.error('Error sending: ', error);
         }
     }
 
-    async sendToUser(userId: string, title: string, body: string) {
-        // Fetch token from DB (we'll add DB in Step 4)
-        const token = await this.getUserToken(userId);  // Placeholder
-        if (token) await this.sendNotification(token, title, body);
+    async sendToUser(userId: string, title: string, body: string, token?: string) {
+        console.log
+        if (token) {
+            await this.sendNotification(token, title, body);
+            return
+        } else {
+            const inToken = await this.getUserToken(userId);  // Placeholder
+            if (inToken) await this.sendNotification(inToken, title, body);
+        }
+
     }
 
     async getUserToken(userId: string): Promise<string> {

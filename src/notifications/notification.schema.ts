@@ -14,8 +14,10 @@ export type NotificationDocument = Notification & Document;
     }
 })
 export class Notification extends Document {
+
     @Prop({ type: String, required: true })
-    type: string; // e.g., "LowStock", "SalesAlert", "Promotion", 'General'
+    title: string // e.g., "LowStock", "SalesAlert", "Promotion", 'General'
+
 
     @Prop({ type: String, required: true, set: (title: string) => title.toLowerCase() })
     message: string;

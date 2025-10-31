@@ -60,7 +60,7 @@ export class DepartmentService {
           model: `${query.select == 'RawGoods' ? 'RawMaterial' : 'Product'}`,
         })
         .exec();
-      console.log(department)
+
       return department;
     } catch (error) {
       errorLog(`Error getting one department: ${error}`, "ERROR")
@@ -84,10 +84,10 @@ export class DepartmentService {
 
 
         .exec();
-      console.log(department)
+ 
       return department;
     } catch (error) {
-      console.log(error)
+
       errorLog(`Error getting one department: ${error}`, "ERROR")
       throw new NotFoundException(`Error getting one department: ${error.message}`);
     }
@@ -239,12 +239,13 @@ export class DepartmentService {
 
     const product = department[section].find((p) => p.productId.toString() === productId.toString());
     if (product) {
+      product.title = item.title ?? item.productId.title;
       product.quantity += item.quantity;
       product.cost = product.quantity * product.unitCost
     } else {
       department[section].push({
         productId: new mongoose.Types.ObjectId(productId),
-        title: item.title,
+        title: item.title ?? item.productId.title,
         cost: item.quantity * senderProduct.unitCost,
         unitCost: senderProduct.unitCost,
         quantity: item.quantity,

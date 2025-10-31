@@ -9,5 +9,5 @@ export enum Role {
   Supervisor = 'supervisor',
   Accounting = 'accountant',
   Chef = 'chef',
-  // Store = 'store'
+  Store = 'store keeper'
 }

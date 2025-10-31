@@ -181,7 +181,7 @@ export class SupplierService {
     }
 
     async updateSuplierById(id: string, data: any) {
-        console.log(data)
+  
         try {
             return this.supplierModel.findByIdAndUpdate(id, data, { new: true });
         } catch (error) {

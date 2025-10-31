@@ -39,6 +39,14 @@ export class CartController {
     return this.cartService.update(id, updateCartDto);
   }
 
+
+  @Patch('update/:id')
+  updateWaiter(@Param('id') id: string, @Body() updateCartDto: UpdateCartDto) {
+    return this.cartService.updateOrderFromWaiter(updateCartDto);
+  }
+
+
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.cartService.remove(id);

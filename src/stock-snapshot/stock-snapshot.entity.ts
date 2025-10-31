@@ -30,6 +30,9 @@ export class StockSnapshot {
 
     @Prop({ type: [RawGoodsSchema], default: [] })
     RawGoods: RawGoods[];
+
+    @Prop()
+    location: string;
 }
 
 export const StockSnapshotSchema = SchemaFactory.createForClass(StockSnapshot);

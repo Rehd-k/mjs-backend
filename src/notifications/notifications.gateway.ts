@@ -17,7 +17,7 @@ export class NotificationsGateway {
     const userId = args[0]?.headers['user-id'] || null;
     if (userId) {
       (client as any).userId = userId; // Store userId on client
-      console.log(`Client connected: userId=${userId}`);
+
     } else {
       console.warn('Client connected without userId');
       client.close(); // Close if no userId (security)

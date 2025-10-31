@@ -22,7 +22,7 @@ export class AuthService {
     try {
       return await this.authModel.create(createAuthDto);
     } catch (error) {
-      console
+      
       if (error && error.code === 11000) {
         let errMessage = `User with username / email already exists ${error}`;
         errorLog(`${errMessage}`, "ERROR")

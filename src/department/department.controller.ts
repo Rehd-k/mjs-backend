@@ -7,7 +7,7 @@ import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 import { Roles } from 'src/helpers/roles/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting, Role.Chef)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting, Role.Chef, Role.Store, Role.Manager)
 
 @Controller('department')
 export class DepartmentController {

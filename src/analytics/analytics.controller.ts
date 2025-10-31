@@ -8,7 +8,7 @@ import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Accounting)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Accounting, Role.Supervisor)
 @Controller('analytics')
 export class AnalyticsController {
     constructor(private readonly analyticsService: AnalyticsService) { }

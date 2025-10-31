@@ -27,7 +27,7 @@ class CartProduct {
 
     @Prop()
     total: number;
-    
+
     @Prop()
     maxQuantity: number;
 
@@ -55,6 +55,9 @@ export class Cart {
 
     @Prop()
     initiator: string;
+
+    @Prop()
+    initiatorId: string;
 
     @Prop({
         default: ''

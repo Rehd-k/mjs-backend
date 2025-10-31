@@ -14,14 +14,14 @@ export class NotificationsService {
         private readonly firebaseService: FirebaseService
     ) { }
 
-    async createNotification(type: string, message: string, recipients: string[], req: any) {
+    async createNotification(title: string, message: string, recipients: string[], req: any) {
         try {
-            const notification = new this.notificationModel({ type, message, recipients, location: req.user.location });
+            const notification = new this.notificationModel({ title, message, recipients, location: req.user.location });
             const nofit = await notification.save();
             for (const element of recipients) {
                 const usersWithRoles = await this.userService.getUsersByRole(element)
                 for (const element of usersWithRoles) {
-                    await this.firebaseService.sendToUser(element._id.toString(), type, message)
+                    await this.firebaseService.sendToUser(element._id.toString(), title, message)
                 }
             }
             return nofit;
@@ -31,6 +31,27 @@ export class NotificationsService {
             throw new BadRequestException('Failed to create notification');
         }
     }
+
+
+    async createNotificationForSpecificUser(title: string, message: string, recipient: string, req: any) {
+        console.log(req.user)
+        try {
+            const notification = new this.notificationModel({ title, message, recipient, location: req.user.location });
+            const nofit = await notification.save();
+        console.log(recipient, req.user.location)
+            const user = await this.userService.findOneByUsername(recipient, req.user.location)
+         
+            if (user)
+                await this.firebaseService.sendToUser(user._id.toString(), title, message, user.fcmToken)
+
+            return nofit;
+
+        } catch (error) {
+            errorLog(error, req.url);
+            throw new BadRequestException('Failed to create notification');
+        }
+    }
+
 
     async getNotifications(recipient: string, location: string) {
         try {

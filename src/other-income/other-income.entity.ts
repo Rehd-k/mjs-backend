@@ -24,9 +24,6 @@ export class OtherIncome extends Document {
     @Prop({ type: Number, required: true })
     amount: number;
 
-    @Prop({ type: Boolean, required: true, default: false })
-    approved: boolean;
-
     @Prop({ type: Date, required: true, default: new Date(Date.now() + 60 * 60 * 1000) })
     date: Date
 

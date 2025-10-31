@@ -49,10 +49,11 @@ export class PurchasesService {
 
                     return res.productId.toString() == product._id
                 })
-                console.log(departmentProduct)
+         
                 if (departmentProduct == -1) {
                     mainDepartment.finishedGoods.push(
                         {
+                            title: product.title,
                             productId: new mongoose.Types.ObjectId(product._id as string),
                             quantity: Number(createdPurchase.quantity),
                             unitCost: Number(createdPurchase.totalPayable) / Number(createdPurchase.quantity),
@@ -140,7 +141,7 @@ export class PurchasesService {
                 initiator,
                 location,
             )
-        
+
             purchase.payments.push(payment._id)
             const updatedPurchase = await purchase.save()
             return updatedPurchase
@@ -513,6 +514,7 @@ export class PurchasesService {
                         departmentProduct.quantity = departmentProduct.quantity + Number(purchase.quantity);
                     } else {
                         mainDepartment.finishedGoods.push({
+                            title: product.title,
                             productId: new mongoose.Types.ObjectId(product._id as string),
                             quantity: Number(purchase.quantity),
                             cost: Number(purchase.totalPayable),
@@ -732,7 +734,7 @@ export class PurchasesService {
                     totalReturnsOutward: 0
                 }];
             }
-            console.log(result)
+        
             return result[0];
 
         } catch (error) {

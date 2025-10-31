@@ -5,7 +5,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Notification, NotificationSchema } from './notification.schema';
 import { FirebaseModule } from 'src/firebase/firebase.module';
 import { UserModule } from 'src/user/user.module';
-import { NotificationsGateway } from './notifications.gateway';
+// import { NotificationsGateway } from './notifications.gateway';
+import { NotificationGateway } from './notification.gateway';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { NotificationsGateway } from './notifications.gateway';
     UserModule
   ],
 
-  providers: [NotificationsService, NotificationsGateway],
+  providers: [NotificationsService,  NotificationGateway],
   controllers: [NotificationsController],
   exports: [NotificationsService]
 })

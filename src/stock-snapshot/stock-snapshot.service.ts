@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateStockSnapshotDto } from './dto/create-stock-snapshot.dto';
 import { UpdateStockSnapshotDto } from './dto/update-stock-snapshot.dto';
 import { StockSnapshot } from './stock-snapshot.entity';
@@ -6,6 +6,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Model, Types } from 'mongoose';
 import { Department, DepartmentProduct, RawGoods } from 'src/department/entities/department.entity';
+import { errorLog } from 'src/helpers/do_loggers';
 
 @Injectable()
 export class StockSnapshotService {
@@ -42,6 +43,7 @@ export class StockSnapshotService {
         department: dept.title,
         finishedGoods: dept.finishedGoods,
         RawGoods: dept.RawGoods,
+        location: dept.location
       });
     }
   }
@@ -51,36 +53,45 @@ export class StockSnapshotService {
   // Can filter by departmentId (optional) and productId (optional).
   // Returns the relevant goods arrays or specific item.
   async getClosingStock(
-    date: Date,
-    department?: string,
+    query: any,
+    location: string,
     productId?: string,
+
   ): Promise<any> {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0); // Normalize to match snapshot date
+    try {
+      const normalizedDate = new Date(query.date);
+      normalizedDate.setHours(0, 0, 0, 0); // Normalize to match snapshot date
 
-    const query: any = { date: normalizedDate };
-    if (department) query.department = department;
-
-    const snapshots = await this.snapshotModel.find(query).exec();
-
-    if (!snapshots.length) {
-      // If no snapshot, you could fall back to calculating from transactions,
-      // but for now, throw an error or return null. Implement calculation if needed.
-      throw new Error(`No snapshot available for date ${normalizedDate}`);
-    }
-
-    // If productId specified, extract the specific good from the arrays
-    if (productId) {
-      const results: (DepartmentProduct | RawGoods | null)[] = [];
-      for (const snap of snapshots) {
-        const fg = snap.finishedGoods.find((g) => g.productId.equals(productId));
-        const rg = snap.RawGoods.find((g) => g.productId.equals(productId));
-        results.push(fg || rg || null);
+      if (!query.department || query.department === '' || query.department === 'all') {
+        delete query.department
       }
-      return results;
-    }
 
-    // Otherwise, return full snapshots
-    return snapshots;
+      const snapshots = await this.snapshotModel.find({ ...query }).exec();
+
+      if (!snapshots.length) {
+        // If no snapshot, you could fall back to calculating from transactions,
+        // but for now, throw an error or return null. Implement calculation if needed.
+        throw new Error(`No snapshot available for date ${normalizedDate}`);
+      }
+
+      // If productId specified, extract the specific good from the arrays
+      if (productId) {
+        const results: (DepartmentProduct | RawGoods | null)[] = [];
+        for (const snap of snapshots) {
+          const fg = snap.finishedGoods.find((g) => g.productId.equals(productId));
+          const rg = snap.RawGoods.find((g) => g.productId.equals(productId));
+          results.push(fg || rg || null);
+        }
+        return results;
+      }
+
+      // Otherwise, return full snapshots
+
+      return snapshots;
+    }
+    catch (error) {
+      errorLog(`Error getting snap shots: ${error}`, "ERROR")
+      throw new BadRequestException(`Error getting snap shots: ${error.message}`);
+    }
   }
 }

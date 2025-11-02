@@ -21,6 +21,10 @@ class CartProduct {
     quantity_paid: number;
 
     @Prop()
+    from: string;
+
+
+    @Prop()
     price: number;
 
     @Prop()
@@ -40,7 +44,7 @@ class CartProduct {
 export class Invoice extends Document {
 
 
-    @Prop({ type: Types.ObjectId, ref: 'Customer', required: true })
+    @Prop({ type: Types.ObjectId, ref: 'Customer', required: true, default: null })
     customer: Types.ObjectId;
 
     @Prop({
@@ -64,10 +68,6 @@ export class Invoice extends Document {
     @Prop({ required: true, unique: true })
     invoiceNumber: string;
 
-    @Prop({ required: true, type: Types.ObjectId, ref: 'Department', default: null })
-    from: Types.ObjectId;
-
-
     @Prop({ type: [CartProduct] })
     items: CartProduct[];
 
@@ -89,7 +89,7 @@ export class Invoice extends Document {
     @Prop({ default: [String] })
     transactionId: string[];
 
-    @Prop({ type: Types.ObjectId, ref: 'Bank', required: true })
+    @Prop({ type: Types.ObjectId, ref: 'Bank', default: null })
     bank: Types.ObjectId;
 
     @Prop()

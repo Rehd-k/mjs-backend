@@ -29,7 +29,7 @@ export class InvoiceService {
       createInvoiceDto['initiator'] = req.user.username
       createInvoiceDto['location'] = req.user.location;
       const newInvoice = new this.invoiceModel(createInvoiceDto)
-      return await this.handleProducts(newInvoice, newInvoice.from, req)
+      return await this.handleProducts(newInvoice, req)
 
     } catch (error) {
       errorLog(`error creating  invoice ${error}`, "ERROR")
@@ -37,9 +37,9 @@ export class InvoiceService {
     }
   }
 
-  async handleProducts(invoice: Invoice, departmentId: Types.ObjectId, req) {
+  async handleProducts(invoice: Invoice, req) {
     for (const item of invoice.items) {
-      await this.inventoryService.deductStock(item.productId.toString(), item.quantity, req, departmentId.toString(), 'Invoice', 'Credit Sells')
+      await this.inventoryService.deductStock(item.productId.toString(), item.quantity, req, item.from.toString(), 'Invoice', 'Credit Sells')
     }
     return await invoice.save();
   }
@@ -305,15 +305,16 @@ export class InvoiceService {
       if (!invoice) {
         throw new BadRequestException('Invoice Not Found')
       }
-      const department = await this.departmentModel.findById(invoice.from)
-      if (!department) {
-        throw new BadRequestException('That Department Dossnt Exist Anymore');
-      }
-      const senderProducts = new Map(
-        department.finishedGoods.map((p) => [p.productId.toString(), p])
-      );
+
 
       for (const item of invoice.items) {
+        const department = await this.departmentModel.findById(item.from)
+        if (!department) {
+          throw new BadRequestException('That Department Dossnt Exist Anymore');
+        }
+        const senderProducts = new Map(
+          department.finishedGoods.map((p) => [p.productId.toString(), p])
+        );
         const sendingProduct = senderProducts.get(item.productId.toString());
 
         if (!sendingProduct) {
@@ -324,6 +325,7 @@ export class InvoiceService {
         sendingProduct.quantity += item.quantity;
         await this.stockFlowService.create('Returns Inward', item.productId, item.quantity, null, department._id, 'in', new Date(Date.now()), req.user.username, req.user.location)
         await this.inventoryService.restockProduct(item.productId.toString(), item.quantity)
+        await department.save();
       }
       return true;
     } catch (error) {

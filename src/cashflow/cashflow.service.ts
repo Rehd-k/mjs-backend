@@ -26,7 +26,7 @@ export class CashflowService {
     initiator: string,
     location: string
   ) {
-  
+
     try {
       // Get latest payment to derive current balances
 
@@ -111,6 +111,7 @@ export class CashflowService {
         .skip(Number(skip))
         .select(select)
         .exec()
+      console.log(transactions)
       return { transactions, openingBalance: previousTransaction?.balanceAfter }
     } catch (error) {
       errorLog(`Error finding all Payments ${error}`, "ERROR")

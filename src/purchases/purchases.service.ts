@@ -49,7 +49,7 @@ export class PurchasesService {
 
                     return res.productId.toString() == product._id
                 })
-         
+
                 if (departmentProduct == -1) {
                     mainDepartment.finishedGoods.push(
                         {
@@ -357,21 +357,29 @@ export class PurchasesService {
                     parsedFilter[key] = { $gte: startDate, $lte: endDate };
                 }
             });
-            if (parsedFilter.supplier === '') {
+            if (parsedFilter.supplier === '' || parsedFilter.supplier === 'null') {
                 delete parsedFilter.supplier
-
-                delete parsedFilter.status
             }
 
-            if (parsedFilter.status === '') {
+            if (parsedFilter.status === '' || parsedFilter.status === 'null') {
                 delete parsedFilter.status
             }
+            if (parsedFilter.productId === '' || parsedFilter.productId === 'null') {
+                delete parsedFilter.productId
+            }
+            delete parsedFilter.createdAt
+
             const purchases = await this.purchaseModel
                 .find({ ...parsedFilter, location: req.user.location }) // Apply filtering
                 .sort(parsedSort)   // Sorting
                 .limit(Number(limit))
                 .skip(Number(skip))
-                .select(`${select}`)     // Projection of main document fields
+                .select(`${select}`)
+                .populate({
+                    path: 'productId',
+                    select: 'title',// Selecting only the 'title' field from the supplier
+                    match: { _id: { $exists: true } }
+                })  // Projection of main document fields
                 .populate({
                     path: 'supplier',
                     select: 'name',// Selecting only the 'name' field from the supplier
@@ -734,7 +742,7 @@ export class PurchasesService {
                     totalReturnsOutward: 0
                 }];
             }
-        
+
             return result[0];
 
         } catch (error) {

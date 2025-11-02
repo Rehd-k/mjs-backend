@@ -66,6 +66,21 @@ export class CartService {
     return await cart.save();
   }
 
+
+
+  async updateCart(id: string, createCartDto: any) {
+    try {
+      const updateCart = await this.cartModel.findByIdAndUpdate(id, createCartDto, { new: true }).exec();
+      if (!updateCart) {
+        throw new NotFoundException('Cart Now Found');
+      }
+      return updateCart;
+    } catch (error) {
+      errorLog(`Error updating cart: ${error.message}`, "ERROR")
+      throw new Error(`Error updating cart: ${error.message}`);
+    }
+  }
+
   async findAll(query: QueryDto, req: any) {
     const {
       filter = '{}',
@@ -174,7 +189,7 @@ export class CartService {
 
       return updatedCart;
     } catch (error) {
-      errorLog(`Error updating cart ${id}: ${error}`, "ERROR");
+      errorLog(`Error updating cart ${id}: ${error} `, "ERROR");
       throw new BadRequestException(error);
     }
   }
@@ -184,7 +199,7 @@ export class CartService {
     try {
       return this.cartModel.findByIdAndDelete(id).exec();
     } catch (error) {
-      errorLog(`Error removing one cart: ${error}`, "ERROR")
+      errorLog(`Error removing one cart: ${error} `, "ERROR")
       throw new BadRequestException(error);
     }
   }

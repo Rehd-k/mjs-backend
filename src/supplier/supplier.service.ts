@@ -153,25 +153,101 @@ export class SupplierService {
     async getSupplierDetails(supplierId: string): Promise<any> {
         const pipeline = [
             {
-                $match: { _id: new Types.ObjectId(supplierId) }
+                $match: { _id: new Types.ObjectId(supplierId) },
             },
+            // {
+            //     $project: {
+            //         name: 1,
+            //         email: 1,
+            //         phone_number: 1,
+            //         status: 1,
+            //         amountSpent: 1,
+            //         contactPerson: 1,
+            //         address: 1,
+            //         otherContacts: 1,
+            //     },
+            // },
             {
-                $project: {
-                    name: 1,
-                    email: 1,
-                    phone_number: 1,
-                    status: 1,
-                    amountSpent: 1,
-                    contactPerson: 1,
-                    address: 1,
-                    otherContacts: 1
-                }
-            }
-
+                // Populate orders from the `orders` array
+                $lookup: {
+                    from: 'purchases', // this should match your Purchase collection name
+                    localField: 'orders',
+                    foreignField: '_id',
+                    as: 'orders',
+                    pipeline: [
+                        {
+                            $project: {
+                                productId: 1,
+                                quantity: 1,
+                                price: 1,
+                                total: 1,
+                                servingQuantity: 1,
+                                totalPayable: 1,
+                                purchaseDate: 1,
+                                status: 1,
+                                debt: 1,
+                                cash: 1,
+                                bank: 1,
+                                initiator: 1,
+                            },
+                        },
+                        {
+                            // populate productId
+                            $lookup: {
+                                from: 'products',
+                                localField: 'productId',
+                                foreignField: '_id',
+                                as: 'productDetails',
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            title: 1,
+                                            type: 1,
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            $unwind: {
+                                path: '$productDetails',
+                                preserveNullAndEmptyArrays: true,
+                            },
+                        },
+                        {
+                            // populate initiator (the user who made the purchase)
+                            $lookup: {
+                                from: 'users',
+                                localField: 'initiator',
+                                foreignField: '_id',
+                                as: 'initiatorDetails',
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            name: 1,
+                                            email: 1,
+                                            role: 1,
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            $unwind: {
+                                path: '$initiatorDetails',
+                                preserveNullAndEmptyArrays: true,
+                            },
+                        },
+                    ],
+                },
+            },
         ];
+
+
 
         try {
             const suppliers = await this.supplierModel.aggregate(pipeline);
+            console.log(suppliers)
             return suppliers[0]
         } catch (error) {
             errorLog(`Error supplier details ${error}`, "ERROR")
@@ -181,7 +257,7 @@ export class SupplierService {
     }
 
     async updateSuplierById(id: string, data: any) {
-  
+
         try {
             return this.supplierModel.findByIdAndUpdate(id, data, { new: true });
         } catch (error) {

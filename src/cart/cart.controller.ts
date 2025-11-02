@@ -39,6 +39,12 @@ export class CartController {
     return this.cartService.update(id, updateCartDto);
   }
 
+  @Patch('confirm/:id')
+  doConfirm(@Param('id') id: string, @Body() updateCartDto: UpdateCartDto) {
+    return this.cartService.updateCart(id, updateCartDto);
+  }
+
+
 
   @Patch('update/:id')
   updateWaiter(@Param('id') id: string, @Body() updateCartDto: UpdateCartDto) {

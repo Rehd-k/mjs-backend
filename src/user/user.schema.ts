@@ -17,7 +17,7 @@ export class User {
     @Prop()
     profile_Photo: string;
 
-    @Prop({ type: Types.ObjectId, ref: 'Customer', required: true, default: null })
+    @Prop({ type: Types.ObjectId, ref: 'Customer',  default: null })
     customer: Types.ObjectId;
 
     @Prop({

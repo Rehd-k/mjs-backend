@@ -67,7 +67,7 @@ export class NotificationGateway
     } else {
       // OPTIONAL: persist to DB and push when user comes online
       console.log('Recipient offline → store in DB');
-    }
+    } 
   }
 
   // -------------------------------------------------

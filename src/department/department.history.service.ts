@@ -16,8 +16,18 @@ export class DepartmentHistoryService {
   async createHistory(newHistory: any, req: any) {
     try {
       const history = new this.storeHistoryModel(newHistory)
+      console.log(newHistory);
       history.initiator = req.user.username
       history.location = req.user.location
+      if (history.section === "finishedGoods") {
+        history.products = history.products
+        history.rawMaterial = []
+      }
+      if (history.section === "RawGoods") {
+        history.rawMaterial = history.products
+        history.products = []
+      }
+
       return await history.save();
     } catch (error) {
       errorLog(`Error creating this history: ${error}`, "ERROR")
@@ -25,34 +35,71 @@ export class DepartmentHistoryService {
     }
   }
 
-  async handleAprove(id: string, req: any, section) {
+  async handleAprove(id: string, req: any, section: string) {
 
     try {
       let products: any = [];
-      const history = await this.storeHistoryModel.findById(id).populate({
-        path: `products.product`, // 👈e e
-        model: `${section == 'RawGoods' ? 'RawMaterial' : 'Product'}`,
-        select: 'title price cost unitCost',
-      });
-      if (history) {
-        for (const element of history!.products) {
-          let item = {
-            productId: element.product,
-            toSend: element.quantity
+      let history;
+      if (section === 'RawGoods') {
+        history = await this.storeHistoryModel.findById(id).populate({
+          path: `rawMaterial.product`,
+          model: 'RawMaterial',
+          select: 'title price cost unitCost',
+        });
+
+        if (history) {
+          for (const element of history!.rawMaterial) {
+            let item = {
+              productId: element.product,
+              toSend: element.quantity
+            }
+            products.push(item as any)
           }
-          products.push(item as any)
-        } 
-        history.closer = req.user.username
-        this.storeService.sendOrReceiveStock(
-          history.fromId.toString(),
-          history.toId.toString(),
-          history.section,
-          products,
-          req,
-          false
-        )
-        await history.save()
+          history.closer = req.user.username
+          console.log(history);
+          this.storeService.sendOrReceiveStock(
+            history.fromId.toString(),
+            history.toId.toString(),
+            history.section,
+            products,
+            req,
+            false
+          )
+          await history.save()
+        }
       }
+      if (section === 'finishedGoods') {
+        history = await this.storeHistoryModel.findById(id).populate({
+          path: `products.product`,
+          model: 'Product',
+          select: 'title price cost unitCost',
+        });
+
+
+
+        if (history) {
+          for (const element of history!.products) {
+            let item = {
+              productId: element.product,
+              toSend: element.quantity
+            }
+            products.push(item as any)
+          }
+          history.closer = req.user.username
+          console.log(history);
+          this.storeService.sendOrReceiveStock(
+            history.fromId.toString(),
+            history.toId.toString(),
+            history.section,
+            products,
+            req,
+            false
+          )
+          await history.save()
+        }
+      }
+
+
       return history
     } catch (error) {
       errorLog(`Error Approveing this Request ${error}`, "ERROR")
@@ -131,7 +178,7 @@ export class DepartmentHistoryService {
           return acc;
         }, {} as Record<string, 1>)
         : {};
- 
+
 
       // ✅ Aggregation pipeline
       const pipeline: any[] = [
@@ -273,27 +320,51 @@ export class DepartmentHistoryService {
  * You can pass filters from the frontend like:
  * { department: 'warehouse', confirmed: true }
  */
-  async findHistoriesByFilter(filter: { department?: string; confirmed?: boolean }) {
+  async findHistoriesByFilter(filter: { department?: string; confirmed?: string, startDate: string, endDate: string, limit: number }, req) {
     const query: any = {};
 
     // Filter by confirmation status
-    if (filter.confirmed === true) {
+    if (filter.confirmed === "true") {
       query.closer = { $exists: true, $ne: null };
-    } else if (filter.confirmed === false) {
+    }
+    if (filter.confirmed === "false") {
       query.$or = [{ closer: { $exists: false } }, { closer: null }];
     }
 
     // Filter by department (in either from or to)
     if (filter.department) {
-      const name = filter.department.toLowerCase();
-      query.$or = query.$or || [];
-      query.$or.push({ from: name }, { to: name });
+      if (filter.department !== 'Select') {
+        const name = filter.department;
+        query.$or = query.$or || [];
+        query.$or.push({ from: name }, { to: name });
+      }
     }
 
-    return this.storeHistoryModel
-      .find(query)
+    const start = new Date(filter.startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(filter.endDate);
+    end.setHours(23, 59, 59, 999);
+
+
+    query.createdAt = { $gte: start, $lte: end }
+    console.log(query)
+
+    let history = await this.storeHistoryModel
+      .find({ ...query, location: req.user.location })
+      .limit(Number(filter.limit))
       .populate('products.product')
+      .populate('rawMaterial.product')
       .lean();
+    const processedHistory = history.map(item => ({
+      ...item,
+      products: [...(item.products || []), ...(item.rawMaterial || [])]
+    }));
+    history = processedHistory;
+    const totalDocuments = await this.storeHistoryModel.countDocuments({ ...query, location: req.user.location })
+
+
+    return { history, totalDocuments }
   }
 
 

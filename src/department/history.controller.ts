@@ -33,7 +33,7 @@ export class DepartmentHistortyController {
         @Req() req: any,
         @Query() query: any
     ) {
-        return await this.departmentHistoryService.findAll(req, query);
+        return await this.departmentHistoryService.findHistoriesByFilter(query, req);
     }
 
     @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Store, Role.Chef, Role.Supervisor)

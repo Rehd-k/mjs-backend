@@ -47,8 +47,8 @@ export class CartController {
 
 
   @Patch('update/:id')
-  updateWaiter(@Param('id') id: string, @Body() updateCartDto: UpdateCartDto) {
-    return this.cartService.updateOrderFromWaiter(updateCartDto);
+  updateWaiter(@Param('id') id: string, @Body() updateCartDto: UpdateCartDto, @Req() req: any) {
+    return this.cartService.updateOrderFromWaiter(updateCartDto, req);
   }
 
 

@@ -29,14 +29,19 @@ export class UserService {
         }
     }
 
-    async findOneByUsername(username: string, location?: string) {
+    async findOneByUsername(username: string) {
         try {
-            return this.userModel.findOne({ username, location });
+            return this.userModel.findOne({ username });
         } catch (error) {
             errorLog(`error finding user by username ${error}`, "ERROR")
             throw new BadRequestException(error);
         }
 
+    }
+
+    async getUsersByDepartment(department: string, req) {
+        const user = await this.userModel.find({ department: department, location: req.user.location }).select('role')
+        return user;
     }
 
     async getAllUsers(query: QueryDto, req) {
@@ -101,9 +106,9 @@ export class UserService {
         }
     }
 
-    async getUsersByRole(role: string) {
+    async getUsersByRole(role: string, req: any) {
         try {
-            return this.userModel.find({ role: role });
+            return this.userModel.find({ role: role, location: req.user.location });
         } catch (error) {
             errorLog(`error getting users by role ${error}`, "ERROR")
             throw new BadRequestException(error);

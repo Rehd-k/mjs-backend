@@ -92,10 +92,10 @@ export class InventoryService {
     private async notifyAdminLowStock(product: any, req: any): Promise<void> {
         // Implement your notification logic here
         // You can send an email, push notification, or log the alert
-        this.notificationService.createNotification(
-            'LowStock',
+        this.notificationService.createNotificationForRoles(
             `Product ${product.name} is running low on stock.`,
-            ['admin'],
+            ['admin', 'manager', 'supervisor'],
+            'LowStock',
             req
         );
     }

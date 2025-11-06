@@ -5,27 +5,36 @@ import { Notification } from './notification.schema';
 import { errorLog } from 'src/helpers/do_loggers';
 import { UserService } from 'src/user/user.service';
 import { FirebaseService } from 'src/firebase/firebase.service';
+import { NotificationGateway } from './notification.gateway';
 
 @Injectable()
 export class NotificationsService {
     constructor(
         @InjectModel(Notification.name) private readonly notificationModel: Model<Notification>,
         private readonly userService: UserService,
-        private readonly firebaseService: FirebaseService
+        private readonly firebaseService: FirebaseService,
+        private readonly notificationGateway: NotificationGateway
     ) { }
 
-    async createNotification(title: string, message: string, recipients: string[], req: any) {
+    async createNotificationForRoles(message: string, recipients: string[], title: string, req: any) {
         try {
+            let usernames: string[] = [];
             const notification = new this.notificationModel({ title, message, recipients, location: req.user.location });
             const nofit = await notification.save();
             for (const element of recipients) {
-                const usersWithRoles = await this.userService.getUsersByRole(element)
+                const usersWithRoles = await this.userService.getUsersByRole(element, req)
                 for (const element of usersWithRoles) {
-                    await this.firebaseService.sendToUser(element._id.toString(), title, message)
+                    await this.firebaseService.sendToUser(element._id.toString(), title, message, element.fcmToken)
+                    usernames.push(element.username)
                 }
+
+                await this.notificationGateway.handleNotification({
+                    to: usernames,
+                    title,
+                    message
+                })
             }
             return nofit;
-
         } catch (error) {
             errorLog(error, req.url);
             throw new BadRequestException('Failed to create notification');
@@ -34,15 +43,20 @@ export class NotificationsService {
 
 
     async createNotificationForSpecificUser(title: string, message: string, recipient: string, req: any) {
-        console.log(req.user)
         try {
             const notification = new this.notificationModel({ title, message, recipient, location: req.user.location });
             const nofit = await notification.save();
-        console.log(recipient, req.user.location)
-            const user = await this.userService.findOneByUsername(recipient, req.user.location)
-         
-            if (user)
+            const user = await this.userService.findOneByUsername(recipient)
+
+            if (user) {
                 await this.firebaseService.sendToUser(user._id.toString(), title, message, user.fcmToken)
+                await this.notificationGateway.handleNotification({
+                    to: [recipient],
+                    title,
+                    message
+                })
+            }
+
 
             return nofit;
 

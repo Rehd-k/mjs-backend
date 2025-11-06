@@ -66,7 +66,7 @@ export class Purchase {
     })
     notes: string;
 
-    @Prop({ type: mongoose.Types.ObjectId, ref: 'Supplier', required: true, default: null })
+    @Prop({ type: mongoose.Types.ObjectId, ref: 'Supplier', default: null })
     supplier: Types.ObjectId;
 
     @Prop({

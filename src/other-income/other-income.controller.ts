@@ -10,7 +10,7 @@ import { OtherIncomeCategoryService } from './other-income..service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Accounting)
-@Controller('income')
+@Controller('otherIncome')
 export class OtherIncomeController {
   constructor(private readonly otherIncomeService: OtherIncomeService, private readonly otherIncomeCategoryService: OtherIncomeCategoryService) { }
 

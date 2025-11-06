@@ -14,7 +14,8 @@ interface StockItem {
   toSend: number;
   cost: number;
   unitCost: number;
-  productId: any
+  productId: any;
+  quantity?: number;
 }
 
 @Injectable()
@@ -42,6 +43,7 @@ export class DepartmentService {
   async findAll(req: any, query: any) {
     try {
       const department = await this.departmentModel.find({ ...query, location: req.user.location }).select(' -finishedGoods -RawGoods ').exec()
+
       return department;
     } catch (error) {
       errorLog(`Error getting all department: ${error}`, "ERROR")
@@ -84,7 +86,7 @@ export class DepartmentService {
 
 
         .exec();
- 
+
       return department;
     } catch (error) {
 
@@ -265,6 +267,7 @@ export class DepartmentService {
 
     try {
       if (!senderId || !receiverId || !Array.isArray(body) || !section || body.length === 0) {
+        console.log(senderId, receiverId, body, section)
         throw new BadRequestException('Invalid request payload');
       }
 
@@ -288,20 +291,24 @@ export class DepartmentService {
 
         // Increase stock in receiver
         this.increaseStock(receiver, section, productId._id, { ...item, quantity: toSend }, senderProduct);
-        if (newHistory) {
-          await this.departmentHistoryModel.create({
-            from: sender.title,
-            fromId: sender._id,
-            to: receiver.title,
-            toId: receiver._id,
-            products: body,
-            section,
-            location: req.user.location,
-            closer: req.user.username,
-            initiator: req.user.username,
-          })
-        }
+        item.product = item.productId._id;
+        item.quantity = item.toSend
+
         await this.stockFlowService.create('Stock Movement', productId._id, toSend, sender._id, receiver._id, 'contra', new Date(Date.now()), req.user.username, req.user.location)
+      }
+      if (newHistory) {
+        await this.departmentHistoryModel.create({
+          from: sender.title,
+          fromId: sender._id,
+          to: receiver.title,
+          toId: receiver._id,
+          products: section === 'finishedGoods' ? body : [],
+          rawMaterial: section === 'RawGoods' ? body : [],
+          section,
+          location: req.user.location,
+          closer: req.user.username,
+          initiator: req.user.username,
+        })
       }
 
       await Promise.all([sender.save(), receiver.save()]);

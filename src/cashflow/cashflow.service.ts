@@ -111,7 +111,6 @@ export class CashflowService {
         .skip(Number(skip))
         .select(select)
         .exec()
-      console.log(transactions)
       return { transactions, openingBalance: previousTransaction?.balanceAfter }
     } catch (error) {
       errorLog(`Error finding all Payments ${error}`, "ERROR")

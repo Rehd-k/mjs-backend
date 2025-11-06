@@ -6,16 +6,20 @@ import { Model } from 'mongoose';
 import { Cart } from './cart.entity';
 import { QueryDto } from 'src/product/query.dto';
 import { errorLog } from 'src/helpers/do_loggers';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { DepartmentService } from 'src/department/department.service';
+import { UserService } from 'src/user/user.service';
 
 @Injectable()
 export class CartService {
   constructor(
-    @InjectModel(Cart.name) private readonly cartModel: Model<Cart>
+    @InjectModel(Cart.name) private readonly cartModel: Model<Cart>,
+    private readonly notificationService: NotificationsService,
+    private readonly userService: UserService
   ) { }
 
   async create(createCartDto: any, req) {
-
-
+    let rolesToAlert: string[] = [];
     const grouped = (createCartDto.cart || []).reduce((acc, item) => {
       const key = item.from;
       if (!acc[key]) acc[key] = [];
@@ -39,10 +43,25 @@ export class CartService {
       orderNo: Math.floor(1000 + Math.random() * 90000).toString(),
     }
 
-    return await this.cartModel.create(data)
+    const cart = await this.cartModel.create(data)
+
+    for (const element of cart.from) {
+      const user = await this.userService.getUsersByDepartment(element.department, req);
+      for (const element of user) {
+        if (element.role === 'chef') {
+          rolesToAlert.push('chef')
+        }
+        if (element.role === 'bar') {
+          rolesToAlert.push('bar')
+        }
+      }
+    }
+    this.notificationService.createNotificationForRoles(`New Order with No ${cart.orderNo}`, rolesToAlert, 'New Order', req)
+    return cart
   }
 
-  async updateOrderFromWaiter(createCartDto: any) {
+  async updateOrderFromWaiter(createCartDto: any, req: any) {
+    let rolesToAlert: string[] = [];
     const cart = await this.cartModel.findById(createCartDto._id);
     if (!cart)
       throw new NotFoundException(`Cart with ID ${createCartDto._id} not found`);
@@ -62,6 +81,18 @@ export class CartService {
     cart!.from = groups;
     cart!.total = Number(createCartDto.total);
 
+    for (const element of cart.from) {
+      const user = await this.userService.getUsersByDepartment(element.department, req);
+      for (const element of user) {
+        if (element.role === 'chef') {
+          rolesToAlert.push('chef')
+        }
+        if (element.role === 'bar') {
+          rolesToAlert.push('bar')
+        }
+      }
+    }
+    this.notificationService.createNotificationForRoles(`Update to order ${cart.orderNo}`, rolesToAlert, 'Order Update', req)
 
     return await cart.save();
   }

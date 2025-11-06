@@ -247,7 +247,7 @@ export class SupplierService {
 
         try {
             const suppliers = await this.supplierModel.aggregate(pipeline);
-            console.log(suppliers)
+
             return suppliers[0]
         } catch (error) {
             errorLog(`Error supplier details ${error}`, "ERROR")

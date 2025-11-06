@@ -15,7 +15,7 @@ export class NotificationsController {
   @Post()
   async createNotification(@Body() body: any, @Req() req: any) {
     const { message, recipients, title } = body;
-    return this.notificationsService.createNotification(message, recipients, req, title);
+    return this.notificationsService.createNotificationForRoles(message, recipients, title, req);
   }
 
 

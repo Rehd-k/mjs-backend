@@ -96,3 +96,13 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+
+Action	Command	Description
+Start service	sudo systemctl start my-nest-app	Start it manually
+Stop service	sudo systemctl stop my-nest-app	Stop it manually
+Restart service	sudo systemctl restart my-nest-app	Reloads after code changes
+Enable autostart	sudo systemctl enable my-nest-app	Starts on reboot
+Disable autostart	sudo systemctl disable my-nest-app	Stops autostart on boot
+Check status	sudo systemctl status my-nest-app	Shows live service info
+Reload config	sudo systemctl daemon-reload	Run after editing .service file

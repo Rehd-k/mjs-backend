@@ -9,21 +9,23 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { UserService } from 'src/user/user.service';
 
 interface NotificationPayload {
   to: string[];           // array of userIds
   title: string;
   payload?: any;
+  message: string;
 }
 
 @WebSocketGateway({
   cors: { origin: '*' },
 })
 export class NotificationGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+  implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
+  constructor(private userservice: UserService) { }
 
   private onlineUsers = new Map<string, string>(); // userId → socketId
 
@@ -72,14 +74,15 @@ export class NotificationGateway
   // Generic notification broadcast
   // -------------------------------------------------
   @SubscribeMessage('notification')
-  handleNotification(
+  async handleNotification(
     @MessageBody() payload: NotificationPayload,
   ) {
     console.log(payload)
     const socketsToNotify: string[] = [];
 
     for (const uid of payload.to) {
-      const sid = this.onlineUsers.get(uid);
+      const user = await this.userservice.findOneByUsername(uid);
+      const sid = this.onlineUsers.get(user?._id.toString() ?? '');
       if (sid) socketsToNotify.push(sid);
     }
 
@@ -87,6 +90,7 @@ export class NotificationGateway
       this.server.to(socketsToNotify).emit('notification', {
         title: payload.title,
         payload: payload.payload,
+        message: payload.message
       });
     }
 
@@ -97,4 +101,8 @@ export class NotificationGateway
       // await this.notificationService.saveForLater(offline, payload);
     }
   }
+
+
+
+
 }

@@ -43,9 +43,21 @@ export class DepartmentHistory {
         type: [{
             product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
             quantity: Number,
+            cost: Number,
+            unitCost: Number
         }]
     })
     products: Product[];
+
+    @Prop({
+        type: [{
+            product: { type: mongoose.Schema.Types.ObjectId, ref: 'RawMaterial' },
+            quantity: Number,
+            cost: Number,
+            unitCost: Number
+        }]
+    })
+    rawMaterial: Product[];
 
     @Prop()
     section: string;
@@ -53,7 +65,7 @@ export class DepartmentHistory {
     @Prop()
     location: string;
 
-    @Prop({ set: (title: string) => title.toLowerCase() })
+    @Prop()
     closer: string;
 
     @Prop({ required: true, set: (title: string) => title.toLowerCase() })

@@ -39,4 +39,4 @@ jobs:
           pnpm run build
           
           # Reload the app with PM2 for zero-downtime update
-          pm2 reload my-api
+          sudo systemctl restart averra

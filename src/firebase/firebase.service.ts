@@ -22,7 +22,7 @@ export class FirebaseService {
             notification: { title, body },
             token,
         };
-   
+
 
         try {
             await admin.messaging().send(message);
@@ -33,7 +33,7 @@ export class FirebaseService {
     }
 
     async sendToUser(userId: string, title: string, body: string, token?: string) {
-        console.log
+
         if (token) {
             await this.sendNotification(token, title, body);
             return

@@ -30,7 +30,7 @@ jobs:
           cd ${{ secrets.PROJECT_PATH }}
           
           # Pull the latest changes from the main branch
-          git pull origin main
+          git pull origin main 
           
           # Install any new dependencies
           pnpm install

@@ -38,6 +38,7 @@ import { ReqisitionModule } from './reqisition/reqisition.module';
 import { OtherIncomeModule } from './other-income/other-income.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { CartModule } from './cart/cart.module';
+import { AttendanceModule } from './attendance/attendance.module';
 
 @Module({
   imports: [
@@ -101,7 +102,8 @@ import { CartModule } from './cart/cart.module';
     ReqisitionModule,
     OtherIncomeModule,
     FirebaseModule,
-    CartModule
+    CartModule,
+    AttendanceModule
   ],
   controllers: [AppController],
   providers: [AppService],

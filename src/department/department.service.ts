@@ -267,7 +267,7 @@ export class DepartmentService {
 
     try {
       if (!senderId || !receiverId || !Array.isArray(body) || !section || body.length === 0) {
-        console.log(senderId, receiverId, body, section)
+      
         throw new BadRequestException('Invalid request payload');
       }
 

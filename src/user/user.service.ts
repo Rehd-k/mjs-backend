@@ -4,11 +4,12 @@ import { Model } from 'mongoose';
 import { User } from './user.schema';
 import { QueryDto } from 'src/product/query.dto';
 import { errorLog } from 'src/helpers/do_loggers';
+import { CustomerService } from 'src/customer/customer.service';
 
 
 @Injectable()
 export class UserService {
-    constructor(@InjectModel(User.name) private readonly userModel: Model<User>) { }
+    constructor(@InjectModel(User.name) private readonly userModel: Model<User>, private readonly customerService: CustomerService) { }
 
     async create(user: any) {
 
@@ -97,9 +98,26 @@ export class UserService {
 
     }
 
-    async updateOneById(id: string, user: Partial<User>) {
+    async updateOneById(id: string, user: Partial<User>, req: any) {
+       
         try {
-            return this.userModel.findByIdAndUpdate(id, user, { new: true });
+            const updatedUser = await this.userModel.findByIdAndUpdate(id, user, { new: true });
+
+            if (user.credit_sale === true && updatedUser) {
+                if (!updatedUser.customer) {
+                    const cusOBJ = {
+                        name: `${updatedUser.lastName} ${updatedUser.firstName}`,
+                        email: `${updatedUser.email}`,
+                        phone_number: `${updatedUser.phone_number ?? ' '}`,
+                        address: `${updatedUser.address}`,
+                    }
+
+                    const newCustomer = await this.customerService.createCustomer(cusOBJ, req);
+                    updatedUser.customer = newCustomer._id;
+                    await updatedUser.save();
+                }
+            }
+            
         } catch (error) {
             errorLog(`error updating one users ${error}`, "ERROR")
             throw new BadRequestException(error);

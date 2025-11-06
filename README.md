@@ -99,10 +99,10 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
 
 Action	Command	Description
-Start service	sudo systemctl start my-nest-app	Start it manually
-Stop service	sudo systemctl stop my-nest-app	Stop it manually
-Restart service	sudo systemctl restart my-nest-app	Reloads after code changes
-Enable autostart	sudo systemctl enable my-nest-app	Starts on reboot
-Disable autostart	sudo systemctl disable my-nest-app	Stops autostart on boot
-Check status	sudo systemctl status my-nest-app	Shows live service info
+Start service	sudo systemctl start averra	Start it manually
+Stop service	sudo systemctl stop averra	Stop it manually
+Restart service	sudo systemctl restart averra	Reloads after code changes
+Enable autostart	sudo systemctl enable averra	Starts on reboot
+Disable autostart	sudo systemctl disable averra	Stops autostart on boot
+Check status	sudo systemctl status averra	Shows live service info
 Reload config	sudo systemctl daemon-reload	Run after editing .service file

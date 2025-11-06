@@ -16,7 +16,7 @@ export class DepartmentHistoryService {
   async createHistory(newHistory: any, req: any) {
     try {
       const history = new this.storeHistoryModel(newHistory)
-      console.log(newHistory);
+     
       history.initiator = req.user.username
       history.location = req.user.location
       if (history.section === "finishedGoods") {
@@ -56,7 +56,7 @@ export class DepartmentHistoryService {
             products.push(item as any)
           }
           history.closer = req.user.username
-          console.log(history);
+        
           this.storeService.sendOrReceiveStock(
             history.fromId.toString(),
             history.toId.toString(),
@@ -86,7 +86,7 @@ export class DepartmentHistoryService {
             products.push(item as any)
           }
           history.closer = req.user.username
-          console.log(history);
+     
           this.storeService.sendOrReceiveStock(
             history.fromId.toString(),
             history.toId.toString(),
@@ -348,7 +348,7 @@ export class DepartmentHistoryService {
 
 
     query.createdAt = { $gte: start, $lte: end }
-    console.log(query)
+
 
     let history = await this.storeHistoryModel
       .find({ ...query, location: req.user.location })

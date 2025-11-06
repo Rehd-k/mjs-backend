@@ -54,6 +54,8 @@ export class Supplier extends Document {
     @Prop({ type: [{ type: mongoose.Types.ObjectId }], ref: 'Purchase' })
     orders: Types.ObjectId[];
 
+    @Prop()
+    associatedProducts: [];
 
     @Prop({ type: [{ type: mongoose.Types.ObjectId }], ref: 'Cashflow' })
     payments: mongoose.Types.ObjectId[];

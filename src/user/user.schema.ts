@@ -17,6 +17,14 @@ export class User {
     @Prop()
     profile_Photo: string;
 
+    @Prop({ type: Types.ObjectId, ref: 'Customer', required: true, default: null })
+    customer: Types.ObjectId;
+
+    @Prop({
+        default: false
+    })
+    credit_sale: boolean
+
     @Prop()
     documentation_media: string[];
 
@@ -74,6 +82,9 @@ export class User {
     @Prop({ required: true, minlength: 6 })
     password: string;
 
+    @Prop({ required: true, default : '' })
+    phone_number: string;
+
     @Prop({ required: true, enum: ['admin', 'manager', 'cashier', 'staff', 'god', 'waiter', 'bar', 'supervisor', 'accountant', 'chef', 'store keeper'], default: 'staff' })
     role: string;
 
@@ -82,6 +93,9 @@ export class User {
 
     @Prop({ required: true, type: String })
     location: string;
+
+
+
 
 }
 

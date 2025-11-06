@@ -107,6 +107,7 @@ export class SupplierService {
                             },
                         },
                     ],
+
                 },
             },
         ];
@@ -125,6 +126,8 @@ export class SupplierService {
             }
         }
         result[0].statusSummary = status;
+
+
         return result[0]
     }
 
@@ -247,7 +250,7 @@ export class SupplierService {
 
         try {
             const suppliers = await this.supplierModel.aggregate(pipeline);
-
+           
             return suppliers[0]
         } catch (error) {
             errorLog(`Error supplier details ${error}`, "ERROR")

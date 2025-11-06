@@ -7,11 +7,12 @@ import { QueryDto } from 'src/product/query.dto';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/helpers/multer.config';
+import { CustomerService } from 'src/customer/customer.service';
 
 
 @Controller('user')
 export class UserController {
-    constructor(private userService: UserService) { }
+    constructor(private userService: UserService, private customerService: CustomerService) { }
 
 
     @Post('godadd')
@@ -44,15 +45,17 @@ export class UserController {
     }
 
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
     @Patch(':id')
-    async updateOneById(@Param('id') id: string, @Body() user: any) {
-        return this.userService.updateOneById(id, user);
+    async updateOneById(@Param('id') id: string, @Body() user: any, @Req() req: any) {
+        return this.userService.updateOneById(id, user, req);
     }
 
     @Post('multiple/:id')
     @UseInterceptors(FilesInterceptor('files', 10, multerConfig))
-    uploadMultiple(@UploadedFiles() files: Array<Express.Multer.File>, @Param() id : string) {
-         files.map(file => ({
+    uploadMultiple(@UploadedFiles() files: Array<Express.Multer.File>, @Param() id: string) {
+        files.map(file => ({
             filename: file.originalname,
             size: file.size,
             path: file.path,

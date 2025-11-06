@@ -69,7 +69,12 @@ export class NotificationsService {
 
     async getNotifications(recipient: string, location: string) {
         try {
-            return await this.notificationModel.find({ recipients: recipient, location }).sort({ createdAt: -1 });
+            return await this.notificationModel.find({ 
+                $or: [
+                    { recipients: { $in: [recipient] }, location },
+                    { recipient: recipient, location }
+                ]
+            }).sort({ createdAt: -1 });
         } catch (error) {
             // errorLog(error, req);
             throw new BadRequestException('Failed to get notifications');

@@ -24,6 +24,12 @@ export class Expenses extends Document {
     @Prop({ type: Number, required: true })
     amount: number;
 
+    @Prop({ default: false })
+    funded: boolean;
+
+    @Prop()
+    fundedBy: string;
+
     @Prop({ type: Boolean, required: true, default: false })
     approved: boolean;
 

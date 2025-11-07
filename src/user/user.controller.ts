@@ -46,7 +46,20 @@ export class UserController {
 
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier)
+    @Roles(
+        Role.God,
+        Role.Admin,
+        Role.Manager,
+        Role.Staff,
+        Role.Cashier,
+        Role.Accounting,
+        Role.Bar,
+        Role.Waiter,
+        Role.Supervisor,
+        Role.Chef,
+        Role.Store,
+        
+        )
     @Patch(':id')
     async updateOneById(@Param('id') id: string, @Body() user: any, @Req() req: any) {
         return this.userService.updateOneById(id, user, req);

@@ -6,7 +6,7 @@ import { Roles } from 'src/helpers/role/roles.decorator';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
 
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting, Role.Chef)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Store, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting, Role.Chef)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('notifications')
 export class NotificationsController {

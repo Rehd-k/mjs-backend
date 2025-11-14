@@ -58,6 +58,8 @@ export class UserService {
             const parsedFilter = JSON.parse(filter);
             const parsedSort = JSON.parse(sort);
 
+            console.log(parsedFilter)
+
             const user = await this.userModel.find({ ...parsedFilter, location: req.user.location })
                 .sort(parsedSort)
                 .skip(Number(skip))
@@ -65,6 +67,7 @@ export class UserService {
                 .select(select)
                 // .populate('location')
                 .exec()
+            console.log(user)
 
             return user;
         } catch (error) {
@@ -99,7 +102,7 @@ export class UserService {
     }
 
     async updateOneById(id: string, user: Partial<User>, req: any) {
-       
+
         try {
             const updatedUser = await this.userModel.findByIdAndUpdate(id, user, { new: true });
 
@@ -117,7 +120,7 @@ export class UserService {
                     await updatedUser.save();
                 }
             }
-            
+
         } catch (error) {
             errorLog(`error updating one users ${error}`, "ERROR")
             throw new BadRequestException(error);

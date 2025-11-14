@@ -106,3 +106,4 @@ Enable autostart	sudo systemctl enable averra	Starts on reboot
 Disable autostart	sudo systemctl disable averra	Stops autostart on boot
 Check status	sudo systemctl status averra	Shows live service info
 Reload config	sudo systemctl daemon-reload	Run after editing .service file
+ sudo journalctl -u averra -f live logs

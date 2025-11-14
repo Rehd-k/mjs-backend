@@ -264,6 +264,8 @@ export class SalesService {
         const parsedFilter = JSON.parse(filter);
         const parsedSort = JSON.parse(sort);
 
+
+
         if (!query.startDate || !query.endDate) {
             throw new BadRequestException('Start date and end date are required for this query');
         }
@@ -289,6 +291,7 @@ export class SalesService {
 
             if (parsedFilter.handler === '') delete parsedFilter.handler;
             if (parsedFilter.paymentMethod === '') delete parsedFilter.paymentMethod;
+            if (parsedFilter.bank === '') delete parsedFilter.bank;
 
             // --- 2. Construct the Single Aggregation Pipeline ---
             const aggregationPipeline: any[] = [
@@ -302,6 +305,7 @@ export class SalesService {
             if (Object.keys(parsedSort).length > 0) {
                 aggregationPipeline.push({ $sort: parsedSort });
             }
+            console.log(parsedFilter)
 
             // Stage 2: Use $facet to run multiple aggregation pipelines on the same set of matched documents
             aggregationPipeline.push({
@@ -752,7 +756,7 @@ export class SalesService {
                     totalSales: 0, totalReturns: 0
                 };
             }
- 
+
             return result[0];
         } catch (error) {
             errorLog(`Error calculating sales totals: ${error}`, "ERROR");

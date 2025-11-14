@@ -21,7 +21,7 @@ export class UserController {
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.God, Role.Admin, Role.Manager)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor)
     @Get()
     async getAllUsers(
         @Query() query: QueryDto,

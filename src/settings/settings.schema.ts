@@ -8,7 +8,7 @@ export class Settings {
     @Prop({ required: true })
     firm_name: string;
 
-    @Prop({ required: true, default: ['admin', 'manager', 'supervisor', 'staff', 'accounting', 'god', 'kitchen', 'bar', 'resturant', 'store'], type: [String] })
+    @Prop({ required: true, default: ['admin', 'manager', 'supervisor', 'staff', 'accountant', 'god', 'kitchen', 'bar', 'resturant', 'store'], type: [String] })
     roles: string[];
 
     @Prop({ type: String, required: true, set: (title: string) => title.toLowerCase() })

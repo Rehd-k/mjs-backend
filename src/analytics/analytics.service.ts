@@ -1,6 +1,7 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { PipelineStage } from 'mongoose';
 import { Customer } from 'src/customer/customer.schema';
 import { Expenses } from 'src/expense/expenses.schema';
 import { errorLog } from 'src/helpers/do_loggers';
@@ -8,7 +9,10 @@ import { Invoice } from 'src/invoice/invoice.schema';
 import { Product } from 'src/product/product.schema';
 import { QueryDto } from 'src/product/query.dto';
 import { Purchase } from 'src/purchases/purchases.schema';
+import { RawMaterial } from 'src/raw-material/raw-material.entity';
 import { Sale } from 'src/sales/sales.schema';
+import { StockFlow } from 'src/stock-flow/stock-flow.entity';
+import { StockSnapshot } from 'src/stock-snapshot/stock-snapshot.entity';
 
 // // Interface for the report structure
 // interface ProductReport {
@@ -24,10 +28,14 @@ export class AnalyticsService {
   constructor(
     @InjectModel(Sale.name) private readonly saleModel: Model<Sale>,
     @InjectModel(Product.name) private readonly productModel: Model<Product>,
+    @InjectModel(RawMaterial.name) private readonly rawMaterialModel: Model<RawMaterial>,
     @InjectModel(Expenses.name) private readonly expenseModel: Model<Expenses>,
     @InjectModel(Customer.name) private readonly customerModel: Model<Customer>,
     @InjectModel(Purchase.name) private readonly purchaseModel: Model<Purchase>,
-    @InjectModel(Invoice.name) private readonly invoiceModel: Model<Invoice>
+    @InjectModel(Invoice.name) private readonly invoiceModel: Model<Invoice>,
+    @InjectModel(StockSnapshot.name) private readonly stockSnapshotModel: Model<StockSnapshot>,
+    @InjectModel(StockFlow.name) private readonly stockFlowModel: Model<StockFlow>,
+
   ) { }
 
   async getSalesDashboard(req: any): Promise<any> {
@@ -484,6 +492,271 @@ export class AnalyticsService {
 
   };
 
+
+  /**
+   * Generates product stock & movement report between two dates.
+   *
+   * - start: start date (will be normalized to start of day)
+   * - end: end date (will be normalized to end of day)
+   * - req: optional, used to filter by location if present (req.user.location)
+   *
+   * @returns -  Returns an array with entries:
+   * { productId, title, sellingPriceUnit, purchasingPriceUnit, openingStock, newStock, totalStock, qtySold, closingStock, amount }
+   */
+  async getStockAndSalesReport(
+    query: any,
+    req: any
+  ): Promise<any[]> {
+    const { startDate, endDate, department, departmentId } = query;
+    const location = req.user.location;
+
+    // --- 1. Date Setup ---
+    const start = new Date(startDate);
+    start.setUTCHours(0, 0, 0, 0); // Force start of day
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Force end of day
+
+    // Target date for the closing snapshot (The morning after the end date)
+    const closingSnapshotDate = new Date(end);
+    closingSnapshotDate.setDate(closingSnapshotDate.getDate() + 1);
+    closingSnapshotDate.setUTCHours(0, 0, 0, 0);
+
+    console.log(start, closingSnapshotDate)
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid date format');
+    }
+
+    // --- 2. Optimized Snapshot Pipeline ---
+    const snapshotPipeline = [
+      {
+        $match: {
+          date: { $in: [start, closingSnapshotDate] },
+          ...(department ? { department } : {}),
+          ...(location ? { location } : {}),
+        },
+      },
+      // PERFORMANCE FIX: Combine arrays first.
+      // Original code unwound twice, creating (N * M) documents. 
+      // This keeps it to (N + M) documents.
+      {
+        $project: {
+          snapshotDate: '$date',
+          allItems: {
+            $concatArrays: [
+              { $ifNull: ['$finishedGoods', []] },
+              { $ifNull: ['$RawGoods', []] },
+            ],
+          },
+        },
+      },
+      { $unwind: '$allItems' },
+      {
+        $group: {
+          _id: '$allItems.productId',
+          purchasingPriceUnit: { $avg: '$allItems.unitCost' }, // Take avg cost if multiple
+          openingStock: {
+            $sum: {
+              $cond: [{ $eq: ['$snapshotDate', start] }, '$allItems.quantity', 0],
+            },
+          },
+          closingStock: {
+            $sum: {
+              $cond: [
+                { $eq: ['$snapshotDate', closingSnapshotDate] },
+                '$allItems.quantity',
+                0,
+              ],
+            },
+          },
+          // We explicitly track if a closing snapshot actually existed for this product
+          hasClosingSnapshot: {
+            $max: { $cond: [{ $eq: ['$snapshotDate', closingSnapshotDate] }, true, false] }
+          }
+        },
+      },
+    ];
+
+    const stockSnapshots = await this.stockSnapshotModel
+      .aggregate(snapshotPipeline)
+      .exec();
+
+    // --- 3. Get Movements (StockFlows) ---
+    const flowPipeline = [
+      {
+        $match: {
+          transactionDate: { $gte: start, $lte: end },
+          title: { $in: ['Purchases', 'Sells', 'Returns Inward', 'Returns Outward'] },
+          ...(location ? { location } : {}),
+          ...(departmentId
+            ? {
+              $or: [
+                {
+                  title: { $in: ['Purchases', 'Returns Inward'] },
+                  stockTo: departmentId,
+                },
+                {
+                  title: { $in: ['Sells', 'Returns Outward'] },
+                  stockFrom: departmentId,
+                },
+              ],
+            }
+            : {}),
+        },
+      },
+      {
+        $group: {
+          _id: '$product',
+          // Quantity bought or returned by customer to us
+          purchasedQty: {
+            $sum: {
+              $cond: [{ $in: ['$title', ['Purchases', 'Returns Inward']] }, '$quantity', 0],
+            },
+          },
+          // Quantity we returned to supplier
+          returnedOutQty: {
+            $sum: {
+              $cond: [{ $eq: ['$title', 'Returns Outward'] }, '$quantity', 0],
+            },
+          },
+          // Quantity sold
+          quantitySold: {
+            $sum: {
+              $cond: [{ $eq: ['$title', 'Sells'] }, '$quantity', 0],
+            },
+          },
+          // Sales Money: Sells (Positive) - Returns Inward (Negative/Refunds)
+          salesAmount: {
+            $sum: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$title", "Sells"] }, then: { $ifNull: ["$amount", 0] } },
+                  // BUSINESS LOGIC FIX: Returns reduce sales revenue
+                  { case: { $eq: ["$title", "Returns Inward"] }, then: { $multiply: [{ $ifNull: ["$amount", 0] }, -1] } }
+                ],
+                default: 0
+              }
+            },
+          },
+        },
+      },
+    ];
+
+    const movements = await this.stockFlowModel.aggregate(flowPipeline).exec();
+
+    // --- 4. Merge Logic (Using Map) ---
+    const reportMap = new Map<string, any>();
+
+    // Initialize with snapshot data
+    stockSnapshots.forEach((item) => {
+      reportMap.set(item._id.toString(), {
+        productId: item._id,
+        openingStock: item.openingStock || 0,
+        closingStock: item.closingStock || 0,
+        hasClosingSnapshot: item.hasClosingSnapshot, // Flag for fallback logic
+        purchasingPriceUnit: item.purchasingPriceUnit || 0,
+        // Defaults
+        purchasedQty: 0,
+        returnedOutQty: 0,
+        quantitySold: 0,
+        salesAmount: 0,
+      });
+    });
+
+    // Merge movements
+    movements.forEach((item) => {
+      const key = item._id.toString();
+      const existing = reportMap.get(key) || {
+        productId: item._id,
+        openingStock: 0,
+        closingStock: 0,
+        hasClosingSnapshot: false,
+        purchasingPriceUnit: 0,
+      };
+
+      reportMap.set(key, {
+        ...existing,
+        purchasedQty: (existing.purchasedQty || 0) + (item.purchasedQty || 0),
+        returnedOutQty: (existing.returnedOutQty || 0) + (item.returnedOutQty || 0),
+        quantitySold: (existing.quantitySold || 0) + (item.quantitySold || 0),
+        salesAmount: (existing.salesAmount || 0) + (item.salesAmount || 0),
+      });
+    });
+
+    // --- 5. Calculation & Enrichment ---
+    let report = Array.from(reportMap.values()).map((item: any) => {
+      // Mathematical Logic
+      // New Stock added to shelf = (Bought + Customer Returns) - (Returns to Supplier)
+      const newStock = item.purchasedQty - item.returnedOutQty;
+
+      const totalAvailable = item.openingStock + newStock;
+
+      // COST CALCULATION
+      const costOfGoodsSold = item.quantitySold * item.purchasingPriceUnit;
+      const grossProfit = item.salesAmount - costOfGoodsSold;
+
+      // CLOSING STOCK FALLBACK
+      // If we don't have a snapshot (e.g., report is for "Today"), calculate theoretical stock
+      let finalClosingStock = item.closingStock;
+      if (!item.hasClosingSnapshot) {
+        finalClosingStock = totalAvailable - item.quantitySold;
+        // Prevent negative stock in reporting if data is messy
+        if (finalClosingStock < 0) finalClosingStock = 0;
+      }
+
+      return {
+        ...item,
+        newStock,
+        totalAvailable,
+        grossProfit,
+        costOfGoodsSold,
+        closingStock: finalClosingStock,
+      };
+    });
+
+    // --- 6. Fetch Product Details ---
+    const productIds = report.map((r) => r.productId);
+
+    // Use Promise.all to run DB queries in parallel
+    const [products, rawmaterials] = await Promise.all([
+      this.productModel.find({ _id: { $in: productIds } }).select('title category price').lean(),
+      this.rawMaterialModel.find({ _id: { $in: productIds } }).select('title category').lean(),
+    ]);
+
+    const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+    const rawMap = new Map(rawmaterials.map((r) => [r._id.toString(), r]));
+
+    // Format Final Output
+    report = report.map((item: any) => {
+      const prod = productMap.get(item.productId.toString());
+      const raw = rawMap.get(item.productId.toString());
+
+      return {
+        productId: item.productId,
+        title: prod?.title || raw?.title || 'Unknown Product',
+        category: prod?.category || raw?.category || 'Uncategorized',
+
+        // BUG FIX: Used prod.sellingPrice instead of prod.price
+        sellingPriceUnit: prod?.price || 0,
+
+        purchasingPriceUnit: Number(item.purchasingPriceUnit.toFixed(2)),
+        openingStock: item.openingStock,
+        newStock: item.newStock,
+        totalAvailable: item.totalAvailable,
+        quantitySold: item.quantitySold,
+        closingStock: item.closingStock,
+        salesAmount: item.salesAmount,
+        grossProfit: Number(item.grossProfit.toFixed(2)),
+      };
+    });
+
+    // Sort alphabetically
+    report.sort((a, b) => a.title.localeCompare(b.title));
+    console.log(report);
+    return report;
+  }
+
   /**
     * Generates a daily sales, returns, purchases, and invoice report for a specific product within a date range.
     * @param productId - The ID of the product to generate the report for.
@@ -663,4 +936,5 @@ export class AnalyticsService {
       }
     ]);
   }
+
 }

@@ -22,6 +22,19 @@ export class AnalyticsController {
     }
 
 
+    @Get('/get-stock-sales-report')
+    async getStockSalesReport(
+        @Query() query: any,
+        @Req() req: any,
+    ) {
+        return this.analyticsService.getStockAndSalesReport(
+
+            query,
+            req
+        );
+    }
+
+
     @Get('/revenue-reports')
     async getRevenueReports(
         @Req() req: any,

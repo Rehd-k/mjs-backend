@@ -45,6 +45,6 @@ files.forEach(file => {
         '--targets',
         'node18-win-x64',
         '--output',
-        'myapp.exe'
+        'server.exe'
     ]);
 })();

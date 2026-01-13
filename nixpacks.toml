@@ -1,0 +1,11 @@
+[phases.setup]
+  nixPkgs = ['nodejs_20', 'pnpm']   # or nodejs_18 / nodejs_22 — match your needs
+
+[phases.install]
+  cmds = ['pnpm install --frozen-lockfile']
+
+[phases.build]
+  cmds = ['pnpm run build']
+
+[start]
+  cmd = 'pnpm start:prod'   # or 'node dist/main.js' etc.

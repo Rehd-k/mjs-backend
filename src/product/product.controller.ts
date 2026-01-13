@@ -9,18 +9,20 @@ import { Types } from 'mongoose';
 import { InventoryService } from './inventory.service';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+
 @Controller('products')
 export class ProductController {
     constructor(private readonly productService: ProductService, private readonly inventoryService: InventoryService) { }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
     @Post()
     async createProduct(@Body() productDto: any, @Req() req: any) {
         return this.productService.create(productDto, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor, Role.Accounting, Role.Chef)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor, Role.Accounting, Role.Chef, Role.Store)
     @Get()
     async getAllProducts(
         @Query() query: QueryDto,
@@ -30,7 +32,8 @@ export class ProductController {
         return data;
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting, Role.Store)
     @Get('/dashboard/:id')
     async getDashboardData(
         @Param('id') id: string,
@@ -49,7 +52,8 @@ export class ProductController {
 
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting, Role.Store)
     @Get('/findone/:id')
     async getProductById(@Param('id') productId: string) {
 
@@ -58,15 +62,29 @@ export class ProductController {
 
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
     @Put('/update/:id')
     async updateProduct(@Param('id') productId: Types.ObjectId, @Body() updateDto: any) {
         return this.productService.update(productId, updateDto);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
     @Delete('/delete/:id')
     async deleteProduct(@Param('id') productId: string) {
         return this.productService.remove(productId);
+    }
+
+
+
+
+
+    @Get('menu')
+    async getProductsForMenu(
+        @Query() query: QueryDto,
+    ) {
+        const data = await this.productService.findAll(query);
+        return data;
     }
 }

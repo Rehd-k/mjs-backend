@@ -9,7 +9,7 @@ import { RolesGuard } from 'src/helpers/roles/roles.guard';
 import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting)
+@Roles(Role.God, Role.Admin, Role.Manager, Role.Supervisor, Role.Accounting, Role.Store)
 @Controller('rawmaterial')
 export class RawMaterialController {
   constructor(private readonly rawMaterialService: RawMaterialService) { }

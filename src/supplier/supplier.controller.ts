@@ -25,7 +25,7 @@ export class SupplierController {
     //     return this.supplierService.addOrder(supplierId, order, 0, null as Types.ObjectId);
     // }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Accounting)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Supervisor, Role.Accounting, Role.Store)
     @Get()
     async getSuppliers(
         @Query() query: QueryDto,

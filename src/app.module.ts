@@ -39,6 +39,8 @@ import { OtherIncomeModule } from './other-income/other-income.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { CartModule } from './cart/cart.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { DiscountsModule } from './discounts/discounts.module';
+import { FeaturedMenuModule } from './featured-menu/featured-menu.module';
 
 @Module({
   imports: [
@@ -103,7 +105,9 @@ import { AttendanceModule } from './attendance/attendance.module';
     OtherIncomeModule,
     FirebaseModule,
     CartModule,
-    AttendanceModule
+    AttendanceModule,
+    DiscountsModule,
+    FeaturedMenuModule
   ],
   controllers: [AppController],
   providers: [AppService],

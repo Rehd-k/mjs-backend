@@ -1,7 +1,5 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards } from '@nestjs/common';
-import { ChargesService } from './charges.service';
-import { CreateChargeDto } from './dto/create-charge.dto';
-import { UpdateChargeDto } from './dto/update-charge.dto';
+import { DiscountsService } from './discounts.service';
 import { RolesGuard } from 'src/helpers/role/roles.guard';
 import { Role } from 'src/helpers/enums';
 import { Roles } from 'src/helpers/role/roles.decorator';
@@ -10,18 +8,18 @@ import { JwtAuthGuard } from 'src/helpers/jwt-auth.guard';
 
 @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting, Role.Cashier)
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Controller('charges')
-export class ChargesController {
-  constructor(private readonly chargesService: ChargesService) { }
+@Controller('discounts')
+export class DiscountsController {
+  constructor(private readonly discountsService: DiscountsService) { }
 
   @Roles(Role.God, Role.Admin, Role.Manager)
   @Post()
-  create(@Body() createChargeDto: CreateChargeDto, @Req() req: any) {
+  create(@Body() createDiscountDto: any, @Req() req: any) {
     try {
-      return this.chargesService.create(createChargeDto, req);
+      return this.discountsService.create(createDiscountDto, req);
     } catch (error) {
 
-      throw new Error(`Error creating charge, ${error}`);
+      throw new Error(`Error creating discount, ${error}`);
     }
 
   }
@@ -31,10 +29,10 @@ export class ChargesController {
     @Req() req: any
   ) {
     try {
-      return this.chargesService.findAll(req);
+      return this.discountsService.findAll(req);
     } catch (error) {
 
-      throw new Error(`Error getting charges, ${error}`);
+      throw new Error(`Error getting discounts, ${error}`);
     }
 
   }
@@ -42,10 +40,10 @@ export class ChargesController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     try {
-      return this.chargesService.findOne(id);
+      return this.discountsService.findOne(id);
     } catch (error) {
 
-      throw new Error(`Error getting charge, ${error}`);
+      throw new Error(`Error getting discount, ${error}`);
 
     }
 
@@ -53,12 +51,12 @@ export class ChargesController {
 
   @Roles(Role.God, Role.Admin, Role.Manager)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateChargeDto: UpdateChargeDto) {
+  update(@Param('id') id: string, @Body() updateDiscountDto: any) {
     try {
-      return this.chargesService.update(id, updateChargeDto);
+      return this.discountsService.update(id, updateDiscountDto);
     } catch (error) {
 
-      throw new Error(`Error updating charge, ${error}`);
+      throw new Error(`Error updating discount, ${error}`);
 
     }
 
@@ -68,10 +66,10 @@ export class ChargesController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     try {
-      return this.chargesService.remove(id);
+      return this.discountsService.remove(id);
     } catch (error) {
 
-      throw new Error(`Error deleting charge, ${error}`);
+      throw new Error(`Error deleting discount, ${error}`);
 
     }
 

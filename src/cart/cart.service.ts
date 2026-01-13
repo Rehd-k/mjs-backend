@@ -19,7 +19,26 @@ export class CartService {
   ) { }
 
   async create(createCartDto: any, req) {
+    console.log(createCartDto)
     let rolesToAlert: string[] = [];
+    const cart = await this.saveCartToDb(createCartDto, req.user.location, req.user.username);
+
+    for (const element of cart.from) {
+      const user = await this.userService.getUsersByDepartment(element.department, req);
+      for (const element of user) {
+        if (element.role === 'chef') {
+          rolesToAlert.push('chef')
+        }
+        if (element.role === 'bar') {
+          rolesToAlert.push('bar')
+        }
+      }
+    }
+    this.notificationService.createNotificationForRoles(`New Order with No ${cart.orderNo}`, rolesToAlert, 'New Order', req)
+    return cart
+  }
+
+  private async saveCartToDb(createCartDto: any, location: any, initiator: any) {
     const grouped = (createCartDto.cart || []).reduce((acc, item) => {
       const key = item.from;
       if (!acc[key]) acc[key] = [];
@@ -35,29 +54,15 @@ export class CartService {
 
 
     const data = {
-      location: req.user.location,
-      initiator: req.user.username,
-      initiatorId: req.user.sub,
+      location: location,
+      initiator: initiator,
       from: groups,
       total: Number(createCartDto.total),
       orderNo: Math.floor(1000 + Math.random() * 90000).toString(),
-    }
+    };
 
-    const cart = await this.cartModel.create(data)
-
-    for (const element of cart.from) {
-      const user = await this.userService.getUsersByDepartment(element.department, req);
-      for (const element of user) {
-        if (element.role === 'chef') {
-          rolesToAlert.push('chef')
-        }
-        if (element.role === 'bar') {
-          rolesToAlert.push('bar')
-        }
-      }
-    }
-    this.notificationService.createNotificationForRoles(`New Order with No ${cart.orderNo}`, rolesToAlert, 'New Order', req)
-    return cart
+    const cart = await this.cartModel.create(data);
+    return cart;
   }
 
   async updateOrderFromWaiter(createCartDto: any, req: any) {
@@ -96,7 +101,6 @@ export class CartService {
 
     return await cart.save();
   }
-
 
 
   async updateCart(id: string, createCartDto: any) {
@@ -189,6 +193,79 @@ export class CartService {
 
     } catch (error) {
       errorLog(`Error finding all carts ${error}`, "ERROR");
+      throw new BadRequestException(error);
+    }
+  }
+
+  async doSplit(updateCartDto: any) {
+    const cart = await this.cartModel.findById(updateCartDto._id);
+
+    try {
+      if (!updateCartDto?._id) throw new BadRequestException('Missing cart _id');
+      const cart = await this.cartModel.findById(updateCartDto._id);
+      if (!cart) throw new NotFoundException(`Cart with ID ${updateCartDto._id} not found`);
+
+      if (!Array.isArray(updateCartDto.cart)) {
+        // nothing to do
+        return await cart.save();
+      }
+
+      // Iterate through each incoming update item
+      for (const incoming of updateCartDto.cart) {
+        const productId = incoming.productId
+        const toSend = Number(incoming.toSend ?? 0);
+        if (!productId || !toSend) {
+          // skip items without productId or no toSend amount
+          if ('toSend' in incoming) delete incoming.toSend;
+          continue;
+        }
+
+        // Find the first product across cart.from[*].products that matches productId
+        let found = false;
+        for (const fromEntry of cart.from || []) {
+          if (!Array.isArray(fromEntry.products)) continue;
+          const prod = fromEntry.products.find(
+            (p: any) => String(p.productId ?? p._id) === String(productId)
+          );
+          if (prod) {
+            // Reduce the quantity by toSend (never below 0)
+            const currentQty = Number(prod.quantity ?? 0);
+            prod.quantity = Math.max(0, currentQty - toSend);
+            prod.total = prod.quantity * prod.price
+
+
+
+            // Update the incoming object: set its quantity to the toSend value (as requested)
+            incoming.quantity = toSend;
+            incoming.total = toSend * prod.price
+
+            // Remove toSend from the incoming object
+            delete incoming.toSend;
+            // Remove product if quantity is 0 or less
+            if (prod.quantity <= 0) {
+              fromEntry.products.splice(fromEntry.products.indexOf(prod), 1);
+            }
+            found = true;
+            break; // only adjust the first matching product
+          }
+        }
+
+        // If not found, still remove toSend so updateCartDto is cleaned up
+        if (!found && 'toSend' in incoming) {
+          delete incoming.toSend;
+        }
+      }
+      cart.total = updateCartDto.oldTotal
+      // Save the modified cart document
+      const saved = await cart.save();
+
+      // Log the mutated updateCartDto.cart
+      await this.saveCartToDb(updateCartDto, cart.location, cart.initiator)
+      console.log(updateCartDto.cart);
+
+      return saved;
+    } catch (error) {
+      errorLog(`Error in doSplit: ${error}`, "ERROR");
       throw new BadRequestException(error);
     }
   }

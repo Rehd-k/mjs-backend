@@ -43,6 +43,13 @@ export class CartController {
   doConfirm(@Param('id') id: string, @Body() updateCartDto: UpdateCartDto) {
     return this.cartService.updateCart(id, updateCartDto);
   }
+ 
+  @Post('dosplit')
+  doSplit(@Body() updateCartDto: UpdateCartDto) {
+    return this.cartService.doSplit(updateCartDto);
+  }
+
+
 
 
 

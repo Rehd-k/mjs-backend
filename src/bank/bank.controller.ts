@@ -19,7 +19,7 @@ export class BankController {
   }
 
 
-  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting, Role.Manager)
+  @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Waiter, Role.Bar, Role.Supervisor, Role.Accounting, Role.Manager, Role.Store)
   @Get()
   findAll(
     @Req() req: any,

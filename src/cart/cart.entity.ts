@@ -66,6 +66,12 @@ export class Cart {
 
 
     @Prop({
+        default: ''
+    })
+    tableNumber: string;
+
+
+    @Prop({
         default: 0
     })
     total: number;

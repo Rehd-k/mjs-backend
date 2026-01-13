@@ -18,7 +18,7 @@ export class CategoryController {
         return this.categoryService.createCategory(body, req);
     }
 
-    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor, Role.Accounting)
+    @Roles(Role.God, Role.Admin, Role.Manager, Role.Staff, Role.Cashier, Role.Supervisor, Role.Accounting, Role.Store)
     @Get()
     async getCategorys(
         @Query() query: QueryDto,

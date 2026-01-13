@@ -25,7 +25,7 @@ export class ProductService {
     }
 
 
-    async findAll(query: QueryDto, req: any): Promise<{ products: Product[], totalDocuments: number }> {
+    async findAll(query: QueryDto, req?: any): Promise<{ products: Product[], totalDocuments: number }> {
 
         const {
             filter = '{}',
@@ -50,11 +50,25 @@ export class ProductService {
             if (parsedFilter.barcode['$regex'])
                 parsedFilter.barcode['$regex'] = parsedFilter.barcode['$regex'].toUpperCase();
         }
+
+        let filtered;
+        if (req && req.user) {
+            filtered = {
+                ...parsedFilter,
+                location: req.user.location
+            }
+        } else {
+            filtered = {
+                ...parsedFilter
+            }
+        }
+
+
         try {
 
 
             const products = await this.productModel
-                .find({ ...parsedFilter, location: req.user.location })
+                .find(filtered)
                 .sort(parsedSort)
                 .skip(Number(skip))
                 .limit(Number(limit))
@@ -63,7 +77,7 @@ export class ProductService {
 
 
             const totalDocuments = await this.productModel
-                .countDocuments({ ...parsedFilter, location: req.user.location })
+                .countDocuments(filtered)
                 .exec();
 
             return { products, totalDocuments };

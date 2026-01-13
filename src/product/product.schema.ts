@@ -43,7 +43,7 @@ export class Product extends Document {
     @Prop({ default: true })
     sellUnits: boolean;
 
-    @Prop({ min: 0 })
+    @Prop({ min: 0 }) 
     servingQuantity: number
 
     @Prop({ min: 0 })

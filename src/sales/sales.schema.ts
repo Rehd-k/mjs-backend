@@ -173,6 +173,9 @@ export class Sale {
     @Prop({ default: '' })
     for: string
 
+    @Prop({ default: '' })
+    waiter: string
+
     @Prop({ required: true, type: String })
     location: string;
 
